@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0e0f0d;
+    --bg2: #161713;
+    --bg3: #1e1f1b;
+    --bg4: #272820;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0ede6;
+    --text2: #8a8880;
+    --text3: #555450;
+    --accent: #c8f060;
+    --accent2: #8db840;
+    --gold: #e8c96a;
+    --red: #e8604a;
+    --teal: #4acfb4;
+    --blue: #5a9ce8;
+    --purple: #a87ee8;
+    --india: #e8a84a;
+    --us: #5a9ce8;
+    --europe: #4acfb4;
+    --crypto: #a87ee8;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --r: 8px;
+    --r2: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; }
+  body { min-height: 100vh; }
+
+  /* ── Layout ── */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0; position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .main { flex: 1; min-width: 0; padding: 2rem; overflow: auto; }
+
+  /* ── Sidebar ── */
+  .sidebar-logo { padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+  .logo-mark { font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
+  .logo-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
+  .sidebar-nav { flex: 1; padding: 0.75rem 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 1.25rem; cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 400; transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: var(--bg3); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(200,240,96,0.05); }
+  .nav-icon { font-size: 14px; width: 18px; text-align: center; }
+  .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+  .currency-sel { width: 100%; padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text); font-family: var(--font-body); font-size: 13px; cursor: pointer; }
+  .currency-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+
+  /* ── Section ── */
+  .section { display: none; }
+  .section.active { display: block; }
+  .page-title { font-family: var(--font-display); font-size: 28px; font-weight: 300; color: var(--text); margin-bottom: 0.25rem; letter-spacing: -0.02em; }
+  .page-sub { font-size: 13px; color: var(--text3); margin-bottom: 1.75rem; }
+
+  /* ── Metric cards ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 1rem 1.25rem; position: relative; overflow: hidden; }
+  .metric::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent-line, var(--border2)); }
+  .metric-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .metric-value { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 5px; font-family: var(--font-mono); }
+  .pos { color: var(--accent); } .neg { color: var(--red); } .neu { color: var(--gold); }
+
+  /* ── Cards ── */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  @media(max-width:900px){ .two-col,.three-col { grid-template-columns: 1fr; } .sidebar { display: none; } .main { padding: 1rem; } }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text3); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; font-family: var(--font-mono); }
+  td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; font-family: var(--font-mono); letter-spacing: 0.02em; }
+  .badge-india { background: rgba(232,168,74,0.15); color: var(--india); }
+  .badge-us { background: rgba(90,156,232,0.15); color: var(--us); }
+  .badge-europe { background: rgba(74,207,180,0.15); color: var(--europe); }
+  .badge-crypto { background: rgba(168,126,232,0.15); color: var(--crypto); }
+  .tag { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; font-family: var(--font-mono); }
+  .tag-buy { background: rgba(200,240,96,0.12); color: var(--accent); }
+  .tag-sell { background: rgba(232,96,74,0.12); color: var(--red); }
+  .tag-dividend { background: rgba(232,201,106,0.12); color: var(--gold); }
+  .tag-bonus { background: rgba(168,126,232,0.12); color: var(--purple); }
+
+  /* ── Alloc bars ── */
+  .alloc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .alloc-label { width: 120px; font-size: 12px; color: var(--text2); flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
+  .alloc-bar-bg { flex: 1; height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+  .alloc-bar { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+  .alloc-pct { width: 42px; font-size: 11px; font-weight: 500; text-align: right; font-family: var(--font-mono); color: var(--text2); }
+
+  /* ── Forms ── */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.25rem; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; }
+  .form-group input, .form-group select, .form-group textarea { padding: 8px 11px; border-radius: var(--r); border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-family: var(--font-body); font-size: 13px; transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+  .form-group input::placeholder { color: var(--text3); }
+
+  /* ── Buttons ── */
+  .btn { padding: 9px 18px; border-radius: var(--r); cursor: pointer; font-size: 13px; font-weight: 500; font-family: var(--font-body); transition: all 0.15s; border: none; }
+  .btn-primary { background: var(--accent); color: #0e0f0d; }
+  .btn-primary:hover { background: #d4f570; }
+  .btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+  .btn-outline:hover { border-color: var(--text2); color: var(--text); }
+  .btn-danger { padding: 4px 10px; background: transparent; border: 1px solid rgba(232,96,74,0.3); border-radius: var(--r); cursor: pointer; font-size: 11px; color: var(--red); font-family: var(--font-body); }
+  .btn-danger:hover { background: rgba(232,96,74,0.1); }
+
+  /* ── XIRR ── */
+  .xirr-big { font-family: var(--font-display); font-size: 52px; font-weight: 300; letter-spacing: -0.03em; line-height: 1; margin: 0.5rem 0; }
+
+  /* ── Import ── */
+  .drop-zone { border: 1px dashed var(--border2); border-radius: var(--r2); padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .drop-zone:hover { border-color: var(--accent); background: rgba(200,240,96,0.03); }
+  .preview-wrap { overflow-x: auto; max-height: 340px; overflow-y: auto; margin-top: 1rem; }
+  .status-ok { color: var(--accent); font-size: 11px; font-family: var(--font-mono); }
+  .status-err { color: var(--red); font-size: 11px; font-family: var(--font-mono); }
+  .status-warn { color: var(--gold); font-size: 11px; font-family: var(--font-mono); }
+  .code-block { background: var(--bg3); border-radius: var(--r); padding: 0.85rem 1rem; font-family: var(--font-mono); font-size: 12px; color: var(--text2); margin: 8px 0; overflow-x: auto; white-space: pre; border: 1px solid var(--border); }
+  .pill { display: inline-block; background: var(--bg3); border-radius: 4px; padding: 1px 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text); border: 1px solid var(--border2); }
+  .tabs-inner { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .tab-inner { padding: 5px 14px; border-radius: var(--r); border: 1px solid var(--border2); background: transparent; cursor: pointer; font-size: 12px; color: var(--text2); font-family: var(--font-body); }
+  .tab-inner.active { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+  .fx-auto { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(74,207,180,0.15); color: var(--teal); font-family: var(--font-mono); margin-left: 4px; }
+  .fx-manual { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; background: rgba(232,201,106,0.12); color: var(--gold); font-family: var(--font-mono); margin-left: 4px; }
+  .spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Mobile nav ── */
+  .mobile-nav { display: none; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0.5rem; overflow-x: auto; }
+  .mobile-nav-inner { display: flex; gap: 4px; min-width: max-content; }
+  .mobile-tab { padding: 6px 14px; border-radius: var(--r); border: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 12px; color: var(--text2); font-family: var(--font-body); white-space: nowrap; }
+  .mobile-tab.active { background: var(--accent); color: #0e0f0d; border-color: transparent; }
+  @media(max-width:900px){ .mobile-nav { display: block; } }
+
+  /* ── Insight rows ── */
+  .insight-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-label { color: var(--text2); }
+  .insight-value { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--text3); }
+  .empty-icon { font-size: 32px; margin-bottom: 0.75rem; opacity: 0.4; }
+  .empty-text { font-size: 13px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Folio</div>
+      <div class="logo-sub">Portfolio Tracker</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showTab('dashboard')"><span class="nav-icon">◈</span> Dashboard</div>
+      <div class="nav-item" onclick="showTab('holdings')"><span class="nav-icon">◧</span> Holdings</div>
+      <div class="nav-item" onclick="showTab('transactions')"><span class="nav-icon">≡</span> Transactions</div>
+      <div class="nav-item" onclick="showTab('add')"><span class="nav-icon">+</span> Add</div>
+      <div class="nav-item" onclick="showTab('import')"><span class="nav-icon">↑</span> Import CSV</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="currency-label">Base currency</div>
+      <select class="currency-sel" id="baseCurrency" onchange="render()">
+        <option value="EUR">EUR — Euro €</option>
+        <option value="USD">USD — Dollar $</option>
+        <option value="INR">INR — Rupee ₹</option>
+        <option value="GBP">GBP — Pound £</option>
+      </select>
+    </div>
+  </aside>
+
+  <!-- Mobile nav -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+  <div class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="mobile-tab active" onclick="showTab('dashboard')">Dashboard</button>
+      <button class="mobile-tab" onclick="showTab('holdings')">Holdings</button>
+      <button class="mobile-tab" onclick="showTab('transactions')">Transactions</button>
+      <button class="mobile-tab" onclick="showTab('add')">+ Add</button>
+      <button class="mobile-tab" onclick="showTab('import')">↑ Import</button>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="section active">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub" id="lastUpdated">Your portfolio at a glance</p>
+      <div class="metric-grid" id="metricGrid"></div>
+      <div class="two-col">
+        <div>
+          <div class="card">
+            <div class="card-title">Allocation by market</div>
+            <div id="allocMarket"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Top holdings</div>
+            <div id="allocHoldings"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="text-align:center;padding:1.5rem;">
+            <div class="card-title">XIRR — annualised return</div>
+            <div class="xirr-big" id="xirrVal">—</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--font-mono);">based on all cash flows to date</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Key insights</div>
+            <div id="insightPanel"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOLDINGS -->
+    <div id="holdings" class="section">
+      <h1 class="page-title">Holdings</h1>
+      <p class="page-sub">All open positions</p>
+      <div class="card">
+        <div class="table-wrap" id="holdingsTable"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="transactions" class="section">
+      <h1 class="page-title">Transactions</h1>
+      <p class="page-sub">Full ledger of every transaction</p>
+      <div class="card">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+          <button class="btn btn-outline" style="font-size:12px;" onclick="exportCSV()">↓ Export CSV</button>
+        </div>
+        <div class="table-wrap" id="txTable"></div>
+      </div>
+    </div>
+
+    <!-- ADD -->
+    <div id="add" class="section">
+      <h1 class="page-title">Add Transaction</h1>
+      <p class="page-sub">Record a new buy, sell, dividend, or bonus</p>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Market</label>
+            <select id="f_market">
+              <option value="India">India (NSE/BSE)</option>
+              <option value="US">US (NYSE/NASDAQ)</option>
+              <option value="Europe">Europe (Xetra/LSE)</option>
+              <option value="Crypto">Crypto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ticker</label>
+            <input type="text" id="f_ticker" placeholder="e.g. NSE:RELIANCE, AAPL, BTC" />
+          </div>
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="f_name" placeholder="Full company name" />
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="f_type" onchange="toggleFormFields()">
+              <option value="buy">Buy</option>
+              <option value="sell">Sell</option>
+              <option value="dividend">Dividend</option>
+              <option value="bonus">Bonus shares</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="f_date" onchange="autoFxSingle()" />
+          </div>
+          <div class="form-group" id="qtyGroup">
+            <label>Quantity</label>
+            <input type="number" id="f_qty" placeholder="Number of shares" step="any" />
+          </div>
+          <div class="form-group" id="priceGroup">
+            <label>Price per unit</label>
+            <input type="number" id="f_price" placeholder="Price in original currency" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select id="f_currency" onchange="autoFxSingle()">
+              <option value="EUR">EUR — Euro</option>
+              <option value="USD">USD — Dollar</option>
+              <option value="INR">INR — Rupee</option>
+              <option value="GBP">GBP — Pound</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>FX rate → EUR <span id="fxSourceBadge" class="fx-manual">manual</span></label>
+            <input type="number" id="f_fx" placeholder="e.g. 0.011 for INR" step="any" value="1" />
+          </div>
+          <div class="form-group">
+            <label>Notes</label>
+            <input type="text" id="f_notes" placeholder="Optional notes" />
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="addTx()">Add transaction</button>
+          <span id="addMsg" style="font-size:12px;color:var(--accent);font-family:var(--font-mono);"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Data management</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="loadSample()">Load sample portfolio</button>
+          <button class="btn btn-outline" style="color:var(--red);border-color:rgba(232,96,74,0.3);" onclick="clearAll()">Clear all data</button>
+        </div>
+        <p style="font-size:12px;color:var(--text3);margin-top:10px;">Sample data loads a demo portfolio so you can explore all features before entering your own transactions.</p>
+      </div>
+    </div>
+
+    <!-- IMPORT -->
+    <div id="import" class="section">
+      <h1 class="page-title">Import CSV</h1>
+      <p class="page-sub">Bulk import past transactions from a spreadsheet</p>
+      <div class="card">
+        <div class="tabs-inner">
+          <button class="tab-inner active" onclick="showImpTab('upload')">Upload file</button>
+          <button class="tab-inner" onclick="showImpTab('paste')">Paste CSV text</button>
+          <button class="tab-inner" onclick="showImpTab('template')">Format guide</button>
+        </div>
+
+        <div id="imp-upload">
+          <div class="drop-zone" onclick="document.getElementById('csvFile').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+            ondragleave="this.style.borderColor=''"
+            ondrop="handleDrop(event)">
+            <div style="font-size:32px;margin-bottom:12px;opacity:0.5;">📂</div>
+            <div style="font-size:15px;font-weight:500;margin-bottom:6px;">Drop your CSV file here</div>
+            <div style="font-size:13px;color:var(--text3);">or click to browse — .csv and .txt supported</div>
+            <input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="display:none" onchange="handleFile(this.files[0])" />
+          </div>
+        </div>
+
+        <div id="imp-paste" style="display:none;">
+          <textarea id="pasteArea" style="width:100%;height:220px;font-family:var(--font-mono);font-size:12px;padding:10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text);resize:vertical;" placeholder="Paste CSV content here. Include the header row as the first line."></textarea>
+          <button class="btn btn-primary" style="margin-top:10px;" onclick="parsePaste()">Parse</button>
+        </div>
+
+        <div id="imp-template" style="display:none;">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Your CSV must use these exact column names in the header row. Column order does not matter.</p>
+          <div class="code-block">market,ticker,name,type,date,qty,price,currency,fx_to_eur,notes</div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;margin:14px 0;font-size:13px;">
+            <div style="color:var(--text2);"><span class="pill">market</span> &nbsp;→&nbsp; <span class="pill">India</span> <span class="pill">US</span> <span class="pill">Europe</span> <span class="pill">Crypto</span></div>
+            <div style="color:var(--text2);"><span class="pill">type</span> &nbsp;→&nbsp; <span class="pill">buy</span> <span class="pill">sell</span> <span class="pill">dividend</span> <span class="pill">bonus</span> &nbsp;<span style="color:var(--text3);">— case insensitive (Buy, BUY, buy all work)</span></div>
+            <div style="color:var(--text2);"><span class="pill">date</span> &nbsp;→&nbsp; YYYY-MM-DD &nbsp;<span style="color:var(--text3);">e.g. 2024-03-15</span></div>
+            <div style="color:var(--text2);"><span class="pill">price</span> &nbsp;→&nbsp; <span style="color:var(--text3);">price per share in original currency. For dividend: total dividend received. For bonus: use 0</span></div>
+            <div style="color:var(--text2);"><span class="pill">fx_to_eur</span> &nbsp;→&nbsp; <span style="color:var(--text3);">leave blank to auto-fetch the real historical rate for that exact date. Or enter manually: EUR=1, USD≈0.92, INR≈0.011, GBP≈1.16</span></div>
+            <div style="color:var(--text2);"><span class="pill">qty</span> &nbsp;→&nbsp; <span style="color:var(--text3);">number of shares. Can be left blank for dividend rows</span></div>
+            <div style="background:rgba(232,201,106,0.08);border:1px solid rgba(232,201,106,0.2);border-radius:var(--r);padding:10px 12px;color:var(--gold);font-size:12px;">
+              ⚠ If your numbers contain commas (e.g. 1,470) — remove them. Use 1470 instead. Or wrap the value in quotes: "1,470"
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="downloadTemplate()">↓ Download template CSV</button>
+        </div>
+
+        <div id="parsePreview" style="display:none;margin-top:1.5rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div id="parseStatus" style="font-size:13px;font-weight:500;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline" onclick="document.getElementById('parsePreview').style.display='none'">Cancel</button>
+              <button class="btn btn-primary" id="importBtn" onclick="confirmImport()">Import valid rows</button>
+            </div>
+          </div>
+          <div id="fxProgress" style="font-size:12px;color:var(--text3);margin-bottom:8px;display:none;font-family:var(--font-mono);"></div>
+          <div class="preview-wrap">
+            <table id="previewTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  </div><!-- end flex col -->
+</div><!-- end shell -->
+
+<script>
+// ─────────────────────────────────────────────
+// State & constants
+// ─────────────────────────────────────────────
+let transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+let parsedRows = [];
+const fxCache = {};
+
+const FALLBACK_FX = { EUR: 1, USD: 0.92, INR: 0.011, GBP: 1.16 };
+const MKT_COLORS = { India: '#e8a84a', US: '#5a9ce8', Europe: '#4acfb4', Crypto: '#a87ee8' };
+const SYM = { EUR: '€', USD: '$', INR: '₹', GBP: '£' };
+
+function getBase() { return document.getElementById('baseCurrency').value; }
+function getBaseRate() { return FALLBACK_FX[getBase()] || 1; }
+function toBase(eur) { return eur / getBaseRate(); }
+function sym() { return SYM[getBase()] || ''; }
+
+function fmtN(v) {
+  if (isNaN(v) || v === null) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e6) return sym() + (v / 1e6).toFixed(2) + 'M';
+  if (a >= 1000) return sym() + Math.round(v).toLocaleString('en');
+  return sym() + v.toFixed(2);
+}
+
+function fmtPct(v) {
+  if (isNaN(v)) return '—';
+  return (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+}
+
+function save() { localStorage.setItem('folio_txns', JSON.stringify(transactions)); }
+
+// ─────────────────────────────────────────────
+// Robust CSV parser — handles quoted fields
+// ─────────────────────────────────────────────
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ─────────────────────────────────────────────
+// Historical FX via frankfurter.app
+// ─────────────────────────────────────────────
+async function fetchHistoricalFX(currency, date) {
+  if (currency === 'EUR') return 1;
+  const key = currency + '_' + date;
+  if (fxCache[key]) return fxCache[key];
+  try {
+    const r = await fetch(`https://api.frankfurter.app/${date}?from=${currency}&to=EUR`);
+    const d = await r.json();
+    if (d.rates && d.rates.EUR) { fxCache[key] = d.rates.EUR; return d.rates.EUR; }
+  } catch (e) {}
+  return FALLBACK_FX[currency] || 1;
+}
+
+async function autoFxSingle() {
+  const currency = document.getElementById('f_currency').value;
+  const date = document.getElementById('f_date').value;
+  const badge = document.getElementById('fxSourceBadge');
+  if (!date || currency === 'EUR') {
+    document.getElementById('f_fx').value = '1';
+    badge.textContent = 'manual'; badge.className = 'fx-manual'; return;
+  }
+  badge.innerHTML = '<span class="spinner"></span>';
+  const rate = await fetchHistoricalFX(currency, date);
+  document.getElementById('f_fx').value = rate.toFixed(6);
+  badge.textContent = 'auto ✓'; badge.className = 'fx-auto';
+}
+
+// ─────────────────────────────────────────────
+// Navigation
+// ─────────────────────────────────────────────
+function showTab(t) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.mobile-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(t).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.textContent.trim().toLowerCase().includes(t.slice(0, 4))) b.classList.add('active');
+  });
+  document.querySelectorAll('.mobile-tab').forEach(b => {
+    if (b.textContent.toLowerCase().includes(t.slice(0, 3))) b.classList.add('active');
+  });
+  if (t === 'dashboard') renderDashboard();
+  if (t === 'holdings') renderHoldingsTable();
+  if (t === 'transactions') renderTxTable();
+}
+
+function showImpTab(t) {
+  ['upload', 'paste', 'template'].forEach(x => document.getElementById('imp-' + x).style.display = x === t ? 'block' : 'none');
+  document.querySelectorAll('.tab-inner').forEach((b, i) => b.classList.toggle('active', ['upload', 'paste', 'template'][i] === t));
+}
+
+// ─────────────────────────────────────────────
+// Add form
+// ─────────────────────────────────────────────
+function toggleFormFields() {
+  const type = document.getElementById('f_type').value;
+  document.getElementById('qtyGroup').style.opacity = type === 'dividend' ? '0.4' : '1';
+  document.getElementById('priceGroup').style.opacity = type === 'bonus' ? '0.4' : '1';
+  if (type === 'bonus') document.getElementById('f_price').value = '0';
+}
+
+function addTx() {
+  const ticker = document.getElementById('f_ticker').value.trim().toUpperCase();
+  const date = document.getElementById('f_date').value;
+  const type = document.getElementById('f_type').value;
+  const price = type === 'bonus' ? 0 : (parseFloat(document.getElementById('f_price').value) || 0);
+  const msg = document.getElementById('addMsg');
+  if (!ticker || !date) { msg.textContent = 'Ticker and date are required.'; return; }
+  if (type !== 'bonus' && type !== 'dividend' && price <= 0) { msg.textContent = 'Price must be greater than 0.'; return; }
+  const qty = type === 'dividend' ? 0 : (parseFloat(document.getElementById('f_qty').value) || 0);
+  const currency = document.getElementById('f_currency').value;
+  const fx = parseFloat(document.getElementById('f_fx').value) || FALLBACK_FX[currency] || 1;
+  const amtOrig = type === 'dividend' ? price : qty * price;
+  const amtEur = type === 'bonus' ? 0 : amtOrig * fx;
+  transactions.push({
+    id: Date.now() + Math.random(),
+    market: document.getElementById('f_market').value,
+    ticker, name: document.getElementById('f_name').value.trim() || ticker,
+    type, date, qty, price, currency, fx, amtEur,
+    notes: document.getElementById('f_notes').value.trim(),
+    fxAuto: document.getElementById('fxSourceBadge').classList.contains('fx-auto')
+  });
+  save();
+  msg.textContent = 'Transaction added ✓';
+  setTimeout(() => msg.textContent = '', 2500);
+  ['f_ticker', 'f_name', 'f_qty', 'f_price', 'f_notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_date').value = new Date().toISOString().slice(0, 10);
+}
+
+function deleteTx(id) {
+  if (!confirm('Delete this transaction?')) return;
+  transactions = transactions.filter(t => t.id != id);
+  save(); renderTxTable(); renderDashboard();
+}
+
+function clearAll() {
+  if (!confirm('This will delete ALL transactions. Are you sure?')) return;
+  transactions = []; save();
+  renderDashboard(); renderHoldingsTable(); renderTxTable();
+}
+
+// ─────────────────────────────────────────────
+// Portfolio calculations
+// ─────────────────────────────────────────────
+function computeHoldings() {
+  const map = {};
+  [...transactions].sort((a, b) => a.date.localeCompare(b.date)).forEach(tx => {
+    if (!map[tx.ticker]) map[tx.ticker] = {
+      ticker: tx.ticker, name: tx.name, market: tx.market,
+      currency: tx.currency, qty: 0, totalCostEur: 0, dividendsEur: 0, bonusQty: 0
+    };
+    const h = map[tx.ticker];
+    if (tx.type === 'buy') { h.qty += tx.qty; h.totalCostEur += tx.amtEur; }
+    else if (tx.type === 'bonus') { h.qty += tx.qty; h.bonusQty += tx.qty; }
+    else if (tx.type === 'sell') {
+      const frac = h.qty > 0 ? tx.qty / h.qty : 0;
+      h.totalCostEur -= frac * h.totalCostEur; h.qty -= tx.qty;
+    }
+    else if (tx.type === 'dividend') { h.dividendsEur += tx.amtEur; }
+  });
+  return Object.values(map).filter(h => h.qty > 0.000001).map(h => ({
+    ...h,
+    avgCostEur: h.qty > 0 ? h.totalCostEur / h.qty : 0,
+    currentValueEur: h.totalCostEur,
+    dividendYield: h.totalCostEur > 0 ? (h.dividendsEur / h.totalCostEur) * 100 : 0
+  }));
+}
+
+function computeXIRR(flows) {
+  if (flows.length < 2) return null;
+  const t0 = new Date(flows[0].date);
+  const yrs = flows.map(f => (new Date(f.date) - t0) / (365.25 * 86400000));
+  const npv = r => flows.reduce((s, f, i) => s + f.amt / Math.pow(1 + r, yrs[i]), 0);
+  let lo = -0.9999, hi = 100, mid = 0;
+  for (let i = 0; i < 300; i++) {
+    mid = (lo + hi) / 2;
+    npv(mid) > 0 ? lo = mid : hi = mid;
+    if (hi - lo < 1e-9) break;
+  }
+  return isFinite(mid) ? mid * 100 : null;
+}
+
+function computeMetrics() {
+  const h = computeHoldings();
+  const totalInvEur = h.reduce((s, x) => s + x.totalCostEur, 0);
+  const totalValEur = h.reduce((s, x) => s + x.currentValueEur, 0);
+  const totalDivEur = h.reduce((s, x) => s + x.dividendsEur, 0);
+  const flows = [...transactions].sort((a, b) => a.date.localeCompare(b.date))
+    .filter(t => t.type !== 'bonus')
+    .map(tx => ({ date: tx.date, amt: tx.type === 'buy' ? -tx.amtEur : tx.amtEur }));
+  if (totalValEur > 0) flows.push({ date: new Date().toISOString().slice(0, 10), amt: totalValEur });
+  const xirrVal = flows.length >= 2 ? computeXIRR(flows) : null;
+  const mktAlloc = {};
+  h.forEach(x => { mktAlloc[x.market] = (mktAlloc[x.market] || 0) + x.currentValueEur; });
+  return { holdings: h, totalInvEur, totalValEur, totalDivEur, xirrVal, mktAlloc };
+}
+
+// ─────────────────────────────────────────────
+// Render dashboard
+// ─────────────────────────────────────────────
+function render() { renderDashboard(); }
+
+function renderDashboard() {
+  const m = computeMetrics();
+  const pnl = toBase(m.totalValEur - m.totalInvEur);
+  const pnlPct = m.totalInvEur > 0 ? ((m.totalValEur - m.totalInvEur) / m.totalInvEur * 100) : 0;
+  const divYield = m.totalInvEur > 0 ? (m.totalDivEur / m.totalInvEur * 100) : 0;
+
+  // Update last-updated
+  document.getElementById('lastUpdated').textContent =
+    'Last updated ' + new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Metric grid
+  const metrics = [
+    { label: 'Portfolio value', value: fmtN(toBase(m.totalValEur)), sub: getBase() + ' equivalent', line: '#4acfb4', cls: '' },
+    { label: 'Total invested', value: fmtN(toBase(m.totalInvEur)), sub: m.holdings.length + ' positions', line: '#5a9ce8', cls: '' },
+    { label: 'Unrealised P&L', value: (pnl >= 0 ? '+' : '') + fmtN(pnl), sub: fmtPct(pnlPct), line: pnl >= 0 ? '#c8f060' : '#e8604a', cls: pnl >= 0 ? 'pos' : 'neg' },
+    { label: 'Dividend income', value: fmtN(toBase(m.totalDivEur)), sub: 'Yield ' + divYield.toFixed(2) + '%', line: '#e8c96a', cls: 'pos' },
+    { label: 'Markets active', value: Object.keys(m.mktAlloc).length, sub: m.holdings.length + ' tickers', line: '#a87ee8', cls: '' },
+  ];
+  document.getElementById('metricGrid').innerHTML = metrics.map(m =>
+    `<div class="metric" style="--accent-line:${m.line}">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value ${m.cls}">${m.value}</div>
+      <div class="metric-sub">${m.sub}</div>
+    </div>`
+  ).join('');
+
+  // XIRR
+  const xirrEl = document.getElementById('xirrVal');
+  if (m.xirrVal !== null) {
+    xirrEl.textContent = (m.xirrVal >= 0 ? '+' : '') + m.xirrVal.toFixed(2) + '%';
+    xirrEl.className = 'xirr-big ' + (m.xirrVal >= 0 ? 'pos' : 'neg');
+  } else {
+    xirrEl.textContent = '—';
+    xirrEl.className = 'xirr-big';
+  }
+
+  // Market alloc
+  const total = Object.values(m.mktAlloc).reduce((s, v) => s + v, 0) || 1;
+  document.getElementById('allocMarket').innerHTML =
+    Object.entries(m.mktAlloc).sort((a, b) => b[1] - a[1]).map(([k, v]) => {
+      const p = (v / total * 100).toFixed(1);
+      return `<div class="alloc-row">
+        <div class="alloc-label">${k}</div>
+        <div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[k] || '#888'}"></div></div>
+        <div class="alloc-pct">${p}%</div>
+      </div>`;
+    }).join('') || '<div class="empty"><div class="empty-text">No data yet</div></div>';
+
+  // Holdings alloc
+  const topH = [...m.holdings].sort((a, b) => b.currentValueEur - a.currentValueEur).slice(0, 7);
+  document.getElementById('allocHoldings').innerHTML =
+    topH.map(h => {
+      const p = (h.currentValueEur / total * 100).toFixed(1);
+      return `<div class="alloc-row">
+        <div class="alloc-label">${h.ticker}</div>
+        <div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[h.market] || '#888'}"></div></div>
+        <div class="alloc-pct">${p}%</div>
+      </div>`;
+    }).join('') || '<div class="empty"><div class="empty-text">No holdings yet</div></div>';
+
+  // Insights
+  const topDiv = [...m.holdings].filter(h => h.dividendsEur > 0).sort((a, b) => b.dividendYield - a.dividendYield)[0];
+  const topHolding = [...m.holdings].sort((a, b) => b.currentValueEur - a.currentValueEur)[0];
+  const bonusCount = transactions.filter(t => t.type === 'bonus').reduce((s, t) => s + t.qty, 0);
+  document.getElementById('insightPanel').innerHTML = [
+    topHolding ? `<div class="insight-row"><span class="insight-label">Largest position</span><span class="insight-value">${topHolding.ticker} (${(topHolding.currentValueEur / total * 100).toFixed(1)}%)</span></div>` : '',
+    topDiv ? `<div class="insight-row"><span class="insight-label">Best dividend yield</span><span class="insight-value pos">${topDiv.ticker} — ${topDiv.dividendYield.toFixed(2)}%</span></div>` : '',
+    m.totalDivEur > 0 ? `<div class="insight-row"><span class="insight-label">Total dividends</span><span class="insight-value">${fmtN(toBase(m.totalDivEur))}</span></div>` : '',
+    m.totalInvEur > 0 ? `<div class="insight-row"><span class="insight-label">Portfolio div yield</span><span class="insight-value">${divYield.toFixed(2)}%</span></div>` : '',
+    bonusCount > 0 ? `<div class="insight-row"><span class="insight-label">Bonus shares received</span><span class="insight-value neu">${bonusCount} shares</span></div>` : '',
+    `<div class="insight-row"><span class="insight-label">Total transactions</span><span class="insight-value">${transactions.length}</span></div>`,
+  ].filter(Boolean).join('') || '<div class="empty"><div class="empty-text">Add transactions to see insights</div></div>';
+}
+
+// ─────────────────────────────────────────────
+// Render holdings table
+// ─────────────────────────────────────────────
+function renderHoldingsTable() {
+  const holdings = computeHoldings();
+  const el = document.getElementById('holdingsTable');
+  if (!holdings.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">◧</div><div class="empty-text">No holdings yet. Add transactions to get started.</div></div>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>Ticker</th><th>Name</th><th>Market</th><th>Qty</th><th>Bonus</th>
+      <th>Avg cost</th><th>Total invested</th><th>Dividends</th><th>Div yield</th>
+    </tr></thead>
+    <tbody>` +
+    [...holdings].sort((a, b) => b.currentValueEur - a.currentValueEur).map(h => `<tr>
+      <td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}</td>
+      <td style="color:var(--text2);font-size:12px;">${h.name}</td>
+      <td><span class="badge badge-${h.market.toLowerCase()}">${h.market}</span></td>
+      <td style="font-family:var(--font-mono);">${h.qty < 1 ? h.qty.toFixed(6) : h.qty % 1 === 0 ? h.qty : h.qty.toFixed(2)}</td>
+      <td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty > 0 ? '+' + h.bonusQty : '—'}</td>
+      <td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))} <span style="font-size:10px;color:var(--text3);">/unit</span></td>
+      <td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td>
+      <td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td>
+      <td style="font-family:var(--font-mono);" class="${h.dividendYield > 0 ? 'pos' : ''}">${h.dividendYield.toFixed(2)}%</td>
+    </tr>`).join('') +
+    `</tbody></table>`;
+}
+
+// ─────────────────────────────────────────────
+// Render transactions table
+// ─────────────────────────────────────────────
+function renderTxTable() {
+  const el = document.getElementById('txTable');
+  if (!transactions.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">≡</div><div class="empty-text">No transactions yet.</div></div>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>Date</th><th>Ticker</th><th>Type</th><th>Market</th>
+      <th>Qty</th><th>Price</th><th>EUR value</th><th>FX rate</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>` +
+    [...transactions].sort((a, b) => b.date.localeCompare(a.date)).map(tx => `<tr>
+      <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;">${tx.date}</td>
+      <td style="font-family:var(--font-mono);font-weight:500;">${tx.ticker}</td>
+      <td><span class="tag tag-${tx.type}">${tx.type}</span></td>
+      <td><span class="badge badge-${tx.market.toLowerCase()}">${tx.market}</span></td>
+      <td style="font-family:var(--font-mono);">${tx.qty || '—'}</td>
+      <td style="font-family:var(--font-mono);">${Number(tx.price).toLocaleString()} ${tx.currency}</td>
+      <td style="font-family:var(--font-mono);">${tx.amtEur.toFixed(2)}</td>
+      <td style="font-size:11px;font-family:var(--font-mono);">
+        ${Number(tx.fx).toFixed(5)}
+        ${tx.fxAuto ? '<span class="fx-auto">auto</span>' : '<span class="fx-manual">manual</span>'}
+      </td>
+      <td style="font-size:12px;color:var(--text3);">${tx.notes || ''}</td>
+      <td><button class="btn-danger" onclick="deleteTx(${tx.id})">del</button></td>
+    </tr>`).join('') +
+    `</tbody></table>`;
+}
+
+// ─────────────────────────────────────────────
+// Export
+// ─────────────────────────────────────────────
+function exportCSV() {
+  const rows = [
+    ['market', 'ticker', 'name', 'type', 'date', 'qty', 'price', 'currency', 'fx_to_eur', 'amt_eur', 'notes'],
+    ...transactions.map(t => [t.market, t.ticker, `"${t.name}"`, t.type, t.date, t.qty, t.price, t.currency, t.fx, t.amtEur.toFixed(4), `"${t.notes || ''}"`])
+  ];
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r => r.join(',')).join('\n'));
+  a.download = 'folio_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+}
+
+function downloadTemplate() {
+  const csv = `market,ticker,name,type,date,qty,price,currency,fx_to_eur,notes
+India,NSE:RELIANCE,Reliance Industries,buy,2024-01-15,50,2400,INR,,Initial buy
+India,NSE:RELIANCE,Reliance Industries,bonus,2024-06-01,5,0,INR,,1:10 bonus issue
+India,NSE:INFY,Infosys,dividend,2024-10-29,0,1470,INR,,Leave fx_to_eur blank for auto rate
+US,AAPL,Apple Inc.,buy,2024-03-10,10,185,USD,,
+Europe,ETR:AIR,Airbus,buy,2024-03-14,27,136.46,EUR,1,
+Crypto,BTC,Bitcoin,buy,2024-01-01,0.05,42000,USD,,`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'folio_template.csv'; a.click();
+}
+
+// ─────────────────────────────────────────────
+// CSV import
+// ─────────────────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => parseAndPreview(e.target.result);
+  r.readAsText(file);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone') && (document.getElementById('dropZone').style.borderColor = '');
+  handleFile(e.dataTransfer.files[0]);
+}
+function parsePaste() { parseAndPreview(document.getElementById('pasteArea').value); }
+
+function parseAndPreview(raw) {
+  const lines = raw.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { alert('Need a header row and at least one data row.'); return; }
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/['"]/g, '').trim());
+  const idx = k => headers.indexOf(k);
+  const missing = ['market', 'ticker', 'type', 'date', 'price', 'currency'].filter(k => idx(k) === -1);
+  if (missing.length) { alert('Missing columns: ' + missing.join(', ') + '\n\nFound columns: ' + headers.join(', ')); return; }
+
+  parsedRows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const get = k => idx(k) >= 0 && cols[idx(k)] !== undefined ? cols[idx(k)].replace(/['"]/g, '').trim() : '';
+    const typeRaw = get('type').toLowerCase();
+    const row = {
+      market: get('market').charAt(0).toUpperCase() + get('market').slice(1).toLowerCase(),
+      ticker: get('ticker').toUpperCase(),
+      name: get('name') || get('ticker').toUpperCase(),
+      type: typeRaw,
+      date: get('date'),
+      qty: parseFloat(get('qty').replace(/,/g, '')) || 0,
+      price: parseFloat(get('price').replace(/,/g, '')) || 0,
+      currency: (get('currency') || 'EUR').toUpperCase(),
+      fx: parseFloat(get('fx_to_eur').replace(/,/g, '')) || 0,
+      notes: get('notes'),
+      fxAuto: false, fxNeedsLookup: false
+    };
+    // Fix US capitalisation
+    if (row.market === 'Us') row.market = 'US';
+
+    const errs = [];
+    if (!['India', 'US', 'Europe', 'Crypto'].includes(row.market)) errs.push(`invalid market "${row.market}" — use India/US/Europe/Crypto`);
+    if (!['buy', 'sell', 'dividend', 'bonus'].includes(row.type)) errs.push(`unknown type "${row.type}" — use buy/sell/dividend/bonus`);
+    if (!row.date.match(/^\d{4}-\d{2}-\d{2}$/)) errs.push('date must be YYYY-MM-DD');
+    if (row.type !== 'bonus' && row.type !== 'dividend' && row.price <= 0) errs.push('price must be > 0');
+
+    row.valid = errs.length === 0;
+    row.error = errs.join('; ');
+
+    if (row.type === 'bonus') {
+      row.amtEur = 0; row.fx = row.fx || 1;
+    } else {
+      const amtOrig = row.type === 'dividend' ? row.price : row.qty * row.price;
+      if (!row.fx || row.fx === 0) {
+        row.fx = FALLBACK_FX[row.currency] || 1;
+        row.fxAuto = true;
+        if (row.valid) row.fxNeedsLookup = true;
+      }
+      row.amtEur = amtOrig * row.fx;
+    }
+    parsedRows.push(row);
+  }
+  showPreview();
+  fetchMissingFX();
+}
+
+async function fetchMissingFX() {
+  const needs = parsedRows.filter(r => r.valid && r.fxNeedsLookup);
+  if (!needs.length) return;
+  const prog = document.getElementById('fxProgress');
+  prog.style.display = 'block';
+  prog.textContent = `Fetching historical FX rates for ${needs.length} rows…`;
+  let done = 0;
+  for (const row of needs) {
+    try {
+      const rate = await fetchHistoricalFX(row.currency, row.date);
+      const amtOrig = row.type === 'dividend' ? row.price : row.qty * row.price;
+      row.fx = rate; row.amtEur = amtOrig * rate; row.fxNeedsLookup = false;
+    } catch (e) {}
+    done++;
+    prog.textContent = `Fetching historical FX rates… ${done}/${needs.length}`;
+  }
+  prog.textContent = `✓ Historical FX rates fetched for ${done} rows`;
+  showPreview();
+}
+
+function showPreview() {
+  const ok = parsedRows.filter(r => r.valid).length;
+  const autoFx = parsedRows.filter(r => r.valid && r.fxAuto).length;
+  document.getElementById('parseStatus').innerHTML =
+    `<span class="status-ok">✓ ${ok} valid rows</span>` +
+    (parsedRows.length - ok > 0 ? ` &nbsp;<span class="status-err">✗ ${parsedRows.length - ok} errors</span>` : '') +
+    (autoFx > 0 ? ` &nbsp;<span class="status-warn">⏳ ${autoFx} with auto FX</span>` : '');
+  document.getElementById('importBtn').textContent = `Import ${ok} valid rows`;
+  document.getElementById('previewTable').innerHTML =
+    `<thead><tr><th>#</th><th>Ticker</th><th>Type</th><th>Market</th><th>Date</th><th>Qty</th><th>Price</th><th>Ccy</th><th>FX → EUR</th><th>EUR value</th><th>Status</th></tr></thead>
+    <tbody>` +
+    parsedRows.map((r, i) => `<tr style="${r.valid ? '' : 'opacity:0.4;'}">
+      <td style="color:var(--text3);font-size:11px;font-family:var(--font-mono);">${i + 1}</td>
+      <td style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</td>
+      <td><span class="tag tag-${r.type}">${r.type}</span></td>
+      <td><span class="badge badge-${r.market.toLowerCase()}">${r.market}</span></td>
+      <td style="font-size:12px;font-family:var(--font-mono);">${r.date}</td>
+      <td style="font-family:var(--font-mono);">${r.qty || '—'}</td>
+      <td style="font-family:var(--font-mono);">${r.price}</td>
+      <td style="font-family:var(--font-mono);">${r.currency}</td>
+      <td style="font-size:11px;font-family:var(--font-mono);">${Number(r.fx).toFixed(5)} ${r.fxAuto ? '<span class="fx-auto">auto</span>' : '<span class="fx-manual">manual</span>'}</td>
+      <td style="font-family:var(--font-mono);">${r.amtEur.toFixed(2)}</td>
+      <td>${r.valid ? '<span class="status-ok">✓</span>' : '<span class="status-err">✗ ' + r.error + '</span>'}</td>
+    </tr>`).join('') + `</tbody>`;
+  document.getElementById('parsePreview').style.display = 'block';
+}
+
+function confirmImport() {
+  const valid = parsedRows.filter(r => r.valid);
+  valid.forEach(r => transactions.push({
+    id: Date.now() + Math.random(),
+    market: r.market, ticker: r.ticker, name: r.name, type: r.type,
+    date: r.date, qty: r.qty, price: r.price, currency: r.currency,
+    fx: r.fx, amtEur: r.amtEur, notes: r.notes, fxAuto: r.fxAuto
+  }));
+  save();
+  document.getElementById('parsePreview').style.display = 'none';
+  alert(`Successfully imported ${valid.length} transactions.`);
+  showTab('dashboard');
+}
+
+// ─────────────────────────────────────────────
+// Sample data
+// ─────────────────────────────────────────────
+function loadSample() {
+  if (transactions.length > 0 && !confirm('This will replace your current data with sample data. Continue?')) return;
+  transactions = [
+    {id:1001,market:'India',ticker:'NSE:NIFTYBEES',name:'Nifty BeES',type:'buy',date:'2025-01-09',qty:100,price:263.53,currency:'INR',fx:0.01097,amtEur:289.04,notes:'',fxAuto:true},
+    {id:1002,market:'India',ticker:'NSE:NIFTYBEES',name:'Nifty BeES',type:'buy',date:'2025-01-13',qty:100,price:259.05,currency:'INR',fx:0.01097,amtEur:284.12,notes:'',fxAuto:true},
+    {id:1003,market:'India',ticker:'NSE:TMPV',name:'NSE:TMPV',type:'buy',date:'2024-11-08',qty:30,price:634,currency:'INR',fx:0.01115,amtEur:212.25,notes:'',fxAuto:true},
+    {id:1004,market:'India',ticker:'NSE:TMPV',name:'NSE:TMPV',type:'buy',date:'2025-01-09',qty:40,price:608.85,currency:'INR',fx:0.01097,amtEur:267.10,notes:'',fxAuto:true},
+    {id:1005,market:'India',ticker:'NSE:OLAELEC',name:'Ola Electric',type:'buy',date:'2024-10-23',qty:300,price:81.87,currency:'INR',fx:0.01117,amtEur:274.46,notes:'',fxAuto:true},
+    {id:1006,market:'India',ticker:'NSE:TATAPOWER',name:'Tata Power',type:'buy',date:'2025-01-13',qty:60,price:352.05,currency:'INR',fx:0.01097,amtEur:231.74,notes:'',fxAuto:true},
+    {id:1007,market:'India',ticker:'NSE:RELIANCE',name:'Reliance Industries',type:'bonus',date:'2024-10-23',qty:30,price:0,currency:'INR',fx:0.011,amtEur:0,notes:'Bonus shares',fxAuto:false},
+    {id:1008,market:'India',ticker:'NSE:INFY',name:'Infosys',type:'dividend',date:'2024-10-29',qty:0,price:1470,currency:'INR',fx:0.01117,amtEur:16.42,notes:'',fxAuto:true},
+    {id:1009,market:'India',ticker:'NSE:AMARAJABAT',name:'Amara Raja',type:'dividend',date:'2024-11-14',qty:0,price:371,currency:'INR',fx:0.01115,amtEur:4.14,notes:'',fxAuto:true},
+    {id:1010,market:'Europe',ticker:'ETR:AIR',name:'Airbus SE',type:'buy',date:'2024-03-14',qty:27,price:136.46,currency:'EUR',fx:1,amtEur:3684.42,notes:'',fxAuto:false},
+    {id:1011,market:'Europe',ticker:'ETR:AIR',name:'Airbus SE',type:'buy',date:'2025-03-14',qty:25,price:136.46,currency:'EUR',fx:1,amtEur:3411.50,notes:'',fxAuto:false},
+    {id:1012,market:'Europe',ticker:'ETR:AIR',name:'Airbus SE',type:'buy',date:'2025-03-14',qty:45,price:289.72,currency:'EUR',fx:1,amtEur:13037.40,notes:'',fxAuto:false},
+    {id:1013,market:'Europe',ticker:'ETR:AIR',name:'Airbus SE',type:'dividend',date:'2024-03-20',qty:0,price:64.26,currency:'EUR',fx:1,amtEur:64.26,notes:'',fxAuto:false},
+    {id:1014,market:'Europe',ticker:'ETR:AIR',name:'Airbus SE',type:'dividend',date:'2025-03-20',qty:0,price:132.60,currency:'EUR',fx:1,amtEur:132.60,notes:'',fxAuto:false},
+    {id:1015,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-01-13',qty:2,price:245.50,currency:'USD',fx:0.9725,amtEur:477.61,notes:'',fxAuto:true},
+    {id:1016,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-01-20',qty:1,price:229.79,currency:'USD',fx:0.9725,amtEur:223.48,notes:'',fxAuto:true},
+    {id:1017,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-02-06',qty:3,price:204.50,currency:'USD',fx:0.9706,amtEur:595.67,notes:'',fxAuto:true},
+    {id:1018,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-01-13',qty:4,price:204.70,currency:'USD',fx:0.9725,amtEur:796.04,notes:'',fxAuto:true},
+    {id:1019,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-02-07',qty:1,price:323.00,currency:'USD',fx:0.9706,amtEur:313.50,notes:'',fxAuto:true},
+    {id:1020,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-02-20',qty:1,price:305.00,currency:'USD',fx:0.9692,amtEur:295.61,notes:'',fxAuto:true},
+    {id:1021,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-03-02',qty:1,price:304.70,currency:'USD',fx:0.9680,amtEur:294.95,notes:'',fxAuto:true},
+    {id:1022,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-03-06',qty:0.7,price:298.00,currency:'USD',fx:0.9675,amtEur:201.76,notes:'',fxAuto:true},
+    {id:1023,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-04-02',qty:1.3,price:289.72,currency:'USD',fx:0.9660,amtEur:364.16,notes:'',fxAuto:true},
+    {id:1024,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-01-14',qty:5,price:88.73,currency:'USD',fx:0.9725,amtEur:431.45,notes:'',fxAuto:true},
+    {id:1025,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-01-21',qty:3,price:85.36,currency:'USD',fx:0.9725,amtEur:249.22,notes:'',fxAuto:true},
+    {id:1026,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-02-11',qty:2,price:80.00,currency:'USD',fx:0.9706,amtEur:155.30,notes:'',fxAuto:true},
+    {id:1027,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-02-12',qty:1,price:77.00,currency:'USD',fx:0.9706,amtEur:74.74,notes:'',fxAuto:true},
+    {id:1028,market:'US',ticker:'ETR:NOV',name:'Nov Inc.',type:'buy',date:'2026-02-04',qty:7,price:40.70,currency:'USD',fx:0.9706,amtEur:276.58,notes:'',fxAuto:true},
+  ];
+  save(); showTab('dashboard');
+}
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+document.getElementById('f_date').value = new Date().toISOString().slice(0, 10);
+renderDashboard();
+</script>
+</body>
+</html>
