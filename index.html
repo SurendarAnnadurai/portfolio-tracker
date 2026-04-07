@@ -703,11 +703,12 @@ let acDebounce=null, acResults=[], acSelectedIdx=-1;
 
 async function yahooSearch(q) {
   try {
-    const r=await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&listsCount=0`,{headers:{'Accept':'application/json'}});
-    if(!r.ok) return [];
-    const d=await r.json();
-    return (d.quotes||[]).filter(q=>q.symbol&&q.quoteType!=='OPTION');
-  } catch(e){return[];}
+    // Route through /api/search (Vercel serverless) to avoid CORS
+    const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    if (!r.ok) return [];
+    const d = await r.json();
+    return (d.quotes||[]).filter(x => x.symbol && x.quoteType !== 'OPTION');
+  } catch(e) { return []; }
 }
 
 function showAC(results, listId) {
