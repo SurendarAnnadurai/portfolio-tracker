@@ -139,6 +139,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+
+.bm-period{padding:5px 14px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-body);}
+.bm-period.active{background:var(--accent);color:#0e0f0d;border-color:transparent;font-weight:500;}
+.bm-toggle{padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font-body);transition:all 0.15s;}
+.bm-toggle.active{color:#0e0f0d;font-weight:500;}
+.bm-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:80px;}
+.bm-bar-label{font-size:11px;color:var(--text2);font-family:var(--font-mono);text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bm-bar-val{font-size:12px;font-weight:500;font-family:var(--font-mono);}
 </style>
 </head>
 <body>
@@ -156,6 +164,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="nav-item" onclick="showTab('add')"><span class="nav-icon">+</span> Add</div>
       <div class="nav-item" onclick="showTab('import')"><span class="nav-icon">↑</span> Import CSV</div>
       <div class="nav-item" onclick="showTab('prices')"><span class="nav-icon">◎</span> Live Prices</div>
+      <div class="nav-item" onclick="showTab('benchmark')"><span class="nav-icon">⌗</span> Benchmark</div>
     </nav>
     <div class="sidebar-footer">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
@@ -182,6 +191,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <button class="mobile-tab" onclick="showTab('add')">+ Add</button>
         <button class="mobile-tab" onclick="showTab('import')">↑ Import</button>
         <button class="mobile-tab" onclick="showTab('prices')">Prices</button>
+        <button class="mobile-tab" onclick="showTab('benchmark')">Benchmark</button>
       </div>
     </div>
     <main class="main">
@@ -451,6 +461,54 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             <button class="filter-clear" onclick="clearFilters('price')">Clear</button>
           </div>
           <div class="table-wrap" id="priceTable"></div>
+        </div>
+      </div>
+
+
+      <!-- BENCHMARK -->
+      <div id="benchmark" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:0.25rem;">
+          <h1 class="page-title" style="margin:0;">Benchmark</h1>
+          <button class="btn btn-outline btn-sm" onclick="loadBenchmark()">⟳ Refresh</button>
+        </div>
+        <p class="page-sub">Compare your portfolio return against major indices</p>
+
+        <!-- Period selector -->
+        <div style="display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-right:4px;">Period</span>
+          <button class="bm-period active" data-p="ytd" onclick="setBmPeriod('ytd')">YTD</button>
+          <button class="bm-period" data-p="1y"  onclick="setBmPeriod('1y')">1Y</button>
+          <button class="bm-period" data-p="2y"  onclick="setBmPeriod('2y')">2Y</button>
+          <button class="bm-period" data-p="3y"  onclick="setBmPeriod('3y')">3Y</button>
+          <button class="bm-period" data-p="5y"  onclick="setBmPeriod('5y')">5Y</button>
+        </div>
+
+        <!-- Index toggles -->
+        <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-right:4px;">Indices</span>
+          <button class="bm-toggle active" data-sym="^NSEI"   data-name="Nifty 50"       data-color="#e8a84a" onclick="toggleIndex(this)">Nifty 50</button>
+          <button class="bm-toggle active" data-sym="^NSMIDCP150" data-name="Nifty Midcap 150" data-color="#e8c96a" onclick="toggleIndex(this)">Nifty Midcap</button>
+          <button class="bm-toggle active" data-sym="^GSPC"   data-name="S&amp;P 500"    data-color="#5a9ce8" onclick="toggleIndex(this)">S&amp;P 500</button>
+          <button class="bm-toggle active" data-sym="^IXIC"   data-name="Nasdaq"         data-color="#4acfb4" onclick="toggleIndex(this)">Nasdaq</button>
+          <button class="bm-toggle active" data-sym="^DJI"    data-name="Dow Jones"      data-color="#a87ee8" onclick="toggleIndex(this)">Dow Jones</button>
+        </div>
+
+        <!-- Status -->
+        <div id="bmStatus" style="font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:1rem;min-height:16px;"></div>
+
+        <!-- Summary bar chart -->
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Total return comparison</div>
+          <div id="bmBarChart" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;min-height:120px;padding-top:0.5rem;"></div>
+        </div>
+
+        <!-- Line chart -->
+        <div class="card">
+          <div class="card-title">Return over time (rebased to 0%)</div>
+          <div style="position:relative;width:100%;height:320px;">
+            <canvas id="bmLineCanvas"></canvas>
+          </div>
+          <div id="bmLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;"></div>
         </div>
       </div>
 
@@ -1212,10 +1270,278 @@ function loadSample(){
   save();livePrices={};savePrices();showTab('dashboard');
 }
 
+
+// ═══════════════════════════════════════
+// BENCHMARK
+// ═══════════════════════════════════════
+let bmPeriod = 'ytd';
+let bmLineChart = null;
+let bmData = {}; // { symbol: { points:[{date,pct}], totalReturn, name, color } }
+let bmPortfolioData = null;
+
+const BM_INDICES = [
+  { sym:'^NSEI',       name:'Nifty 50',        color:'#e8a84a' },
+  { sym:'^NSMIDCP150', name:'Nifty Midcap 150', color:'#e8c96a' },
+  { sym:'^GSPC',       name:'S&P 500',          color:'#5a9ce8' },
+  { sym:'^IXIC',       name:'Nasdaq',           color:'#4acfb4' },
+  { sym:'^DJI',        name:'Dow Jones',        color:'#a87ee8' },
+];
+const PORTFOLIO_COLOR = '#c8f060';
+
+function setBmPeriod(p) {
+  bmPeriod = p;
+  document.querySelectorAll('.bm-period').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+  bmData = {}; bmPortfolioData = null;
+  loadBenchmark();
+}
+
+function toggleIndex(btn) {
+  btn.classList.toggle('active');
+  const color = btn.dataset.color;
+  if (btn.classList.contains('active')) {
+    btn.style.background = color;
+    btn.style.borderColor = color;
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }
+  renderBenchmark();
+}
+
+// Calculate portfolio % return series from transactions
+function calcPortfolioHistory(period) {
+  const holdings = computeHoldings();
+  if (!holdings.length) return null;
+
+  const now = new Date();
+  let startDate;
+  if (period === 'ytd') startDate = new Date(now.getFullYear(), 0, 1);
+  else if (period === '1y') startDate = new Date(now - 365*86400000);
+  else if (period === '2y') startDate = new Date(now - 2*365*86400000);
+  else if (period === '3y') startDate = new Date(now - 3*365*86400000);
+  else if (period === '5y') startDate = new Date(now - 5*365*86400000);
+
+  // Get all buy transactions within or before period
+  const txs = [...transactions]
+    .filter(t => t.type === 'buy' || t.type === 'sell')
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  if (!txs.length) return null;
+
+  // Calculate invested amount at start of period and now
+  // Simple approach: total invested before startDate = base, current value = now
+  const investedAtStart = txs
+    .filter(t => new Date(t.date) <= startDate)
+    .reduce((s, t) => t.type === 'buy' ? s + t.amtEur : s - t.amtEur, 0);
+
+  const investedSinceStart = txs
+    .filter(t => new Date(t.date) > startDate)
+    .reduce((s, t) => t.type === 'buy' ? s + t.amtEur : s - t.amtEur, 0);
+
+  const currentValue = holdings.reduce((s,h) => s + h.currentValueEur, 0);
+  const totalInvested = holdings.reduce((s,h) => s + h.remainCostEur, 0);
+
+  if (totalInvested <= 0 || currentValue <= 0) return null;
+
+  // For the chart we generate synthetic monthly points using XIRR-implied growth
+  // Start: 0%, End: actual total return % for the period
+  const totalReturn = ((currentValue - totalInvested) / totalInvested) * 100;
+
+  // Generate monthly points from startDate to now
+  const points = [];
+  const cursor = new Date(startDate);
+  const totalMs = now - startDate;
+  while (cursor <= now) {
+    const elapsed = cursor - startDate;
+    const frac = totalMs > 0 ? elapsed / totalMs : 1;
+    // Linear interpolation as approximation
+    points.push({
+      date: cursor.toISOString().slice(0, 10),
+      pct: totalReturn * frac
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  // Ensure last point is exact
+  if (points.length && totalReturn !== 0) {
+    points[points.length - 1].pct = totalReturn;
+  }
+
+  return { points, totalReturn, name: 'My Portfolio', color: PORTFOLIO_COLOR };
+}
+
+async function loadBenchmark() {
+  document.getElementById('bmStatus').innerHTML = '<span class="spinner"></span> Loading index data…';
+
+  // Get active indices
+  const activeToggles = [...document.querySelectorAll('.bm-toggle.active')];
+
+  // Portfolio
+  bmPortfolioData = calcPortfolioHistory(bmPeriod);
+
+  // Fetch indices in parallel
+  const fetches = activeToggles.map(async btn => {
+    const sym = btn.dataset.sym;
+    const name = btn.dataset.name;
+    const color = btn.dataset.color;
+    try {
+      const r = await fetch(`/api/history?symbol=${encodeURIComponent(sym)}&period=${bmPeriod}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.points && d.points.length) {
+        bmData[sym] = { ...d, name, color };
+      }
+    } catch(e) {}
+  });
+
+  await Promise.allSettled(fetches);
+
+  const loaded = Object.keys(bmData).length;
+  document.getElementById('bmStatus').textContent = `✓ ${loaded} indices loaded · Period: ${bmPeriod.toUpperCase()}`;
+  renderBenchmark();
+}
+
+function renderBenchmark() {
+  // Collect active datasets
+  const datasets = [];
+
+  // Portfolio
+  if (bmPortfolioData) {
+    datasets.push({ ...bmPortfolioData, isPortfolio: true });
+  }
+
+  // Active indices
+  document.querySelectorAll('.bm-toggle.active').forEach(btn => {
+    const sym = btn.dataset.sym;
+    if (bmData[sym]) datasets.push(bmData[sym]);
+  });
+
+  renderBmBarChart(datasets);
+  renderBmLineChart(datasets);
+}
+
+function renderBmBarChart(datasets) {
+  const el = document.getElementById('bmBarChart');
+  if (!datasets.length) { el.innerHTML = '<div class="empty">No data</div>'; return; }
+
+  const maxAbs = Math.max(...datasets.map(d => Math.abs(d.totalReturn)), 1);
+  const barMaxH = 100; // px
+
+  el.innerHTML = datasets.map(d => {
+    const pct = d.totalReturn;
+    const h = Math.round((Math.abs(pct) / maxAbs) * barMaxH);
+    const cls = pct >= 0 ? 'pos' : 'neg';
+    const barColor = d.color;
+    const sign = pct >= 0 ? '+' : '';
+    return `<div class="bm-bar-wrap">
+      <div class="bm-bar-val ${cls}">${sign}${pct.toFixed(2)}%</div>
+      <div style="display:flex;align-items:flex-end;height:${barMaxH}px;">
+        <div style="width:48px;height:${h}px;background:${barColor};border-radius:4px 4px 0 0;opacity:${pct>=0?'1':'0.8'};"></div>
+      </div>
+      <div class="bm-bar-label" title="${d.name}">${d.name}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderBmLineChart(datasets) {
+  if (bmLineChart) { bmLineChart.destroy(); bmLineChart = null; }
+  const canvas = document.getElementById('bmLineCanvas');
+  if (!datasets.length || !canvas) return;
+
+  // Align all datasets to common dates
+  // Use portfolio dates as reference if available, else first index
+  const ref = datasets[0];
+  const labels = ref.points.map(p => p.date);
+
+  const chartDatasets = datasets.map(d => {
+    // Interpolate d.points to match labels
+    const ptMap = {};
+    d.points.forEach(p => { ptMap[p.date] = p.pct; });
+    // Forward-fill for missing dates
+    let last = 0;
+    const data = labels.map(lbl => {
+      if (ptMap[lbl] !== undefined) { last = ptMap[lbl]; return ptMap[lbl]; }
+      return last;
+    });
+    return {
+      label: d.name,
+      data,
+      borderColor: d.color,
+      backgroundColor: 'transparent',
+      borderWidth: d.isPortfolio ? 2.5 : 1.5,
+      borderDash: d.isPortfolio ? [] : [],
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+    };
+  });
+
+  // Format labels for display
+  const displayLabels = labels.map(l => {
+    const d = new Date(l);
+    return d.toLocaleDateString('en-GB', { month:'short', year:'2-digit' });
+  });
+
+  bmLineChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: displayLabels, datasets: chartDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e1f1b',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#8a8880',
+          bodyColor: '#f0ede6',
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color:'#555450', font:{ size:10, family:"'DM Mono', monospace" }, maxTicksLimit:12 },
+          grid: { color:'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: {
+            color:'#555450',
+            font:{ size:10, family:"'DM Mono', monospace" },
+            callback: v => (v>=0?'+':'')+v.toFixed(1)+'%'
+          },
+          grid: { color:'rgba(255,255,255,0.05)' },
+          afterFit: ctx => { ctx.width = 60; }
+        }
+      }
+    }
+  });
+
+  // Custom legend
+  document.getElementById('bmLegend').innerHTML = datasets.map(d =>
+    `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">
+      <div style="width:24px;height:${d.isPortfolio?3:2}px;background:${d.color};border-radius:2px;"></div>
+      <span style="font-family:var(--font-mono);">${d.name}</span>
+      <span style="${d.totalReturn>=0?'color:var(--accent)':'color:var(--red)'};font-weight:500;">
+        ${d.totalReturn>=0?'+':''}${d.totalReturn.toFixed(2)}%
+      </span>
+    </div>`
+  ).join('');
+}
+
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
+// Set initial toggle button colors
+document.querySelectorAll('.bm-toggle.active').forEach(btn => {
+  btn.style.background = btn.dataset.color;
+  btn.style.borderColor = btn.dataset.color;
+  btn.style.color = '#0e0f0d';
+});
 renderDashboard();
 startAutoRefresh();
 setTimeout(()=>{if(computeHoldings().length>0)fetchAllPrices(false);},800);
