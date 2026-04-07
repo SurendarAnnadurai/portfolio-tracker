@@ -52,7 +52,7 @@ th{text-align:left;color:var(--text3);font-weight:500;padding:8px 10px;border-bo
 th:hover{color:var(--text2);}
 th.sort-asc::after{content:' ▲';color:var(--accent);font-size:9px;}
 th.sort-desc::after{content:' ▼';color:var(--accent);font-size:9px;}
-th.sortable::after{content:' ⬍';opacity:0.3;font-size:9px;}
+th.sortable::after{content:' ⬍';opacity:0.25;font-size:9px;}
 td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:rgba(255,255,255,0.02);}
@@ -79,15 +79,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .form-group input,.form-group select{padding:8px 11px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:var(--font-body);font-size:13px;transition:border-color 0.15s;width:100%;}
 .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);}
 .form-group input::placeholder{color:var(--text3);}
-/* Autocomplete dropdown */
-.autocomplete-list{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);z-index:1000;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
-.autocomplete-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:2px;}
+.autocomplete-list{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);z-index:1000;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.autocomplete-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);}
 .autocomplete-item:last-child{border-bottom:none;}
 .autocomplete-item:hover,.autocomplete-item.selected{background:rgba(200,240,96,0.08);}
-.autocomplete-ticker{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--accent);}
-.autocomplete-name{font-size:12px;color:var(--text2);}
-.autocomplete-meta{font-size:10px;color:var(--text3);}
-.autocomplete-loading{padding:10px 12px;font-size:12px;color:var(--text3);text-align:center;}
+.ac-ticker{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--accent);}
+.ac-name{font-size:12px;color:var(--text2);}
+.ac-meta{font-size:10px;color:var(--text3);}
+.ac-loading{padding:10px 12px;font-size:12px;color:var(--text3);text-align:center;}
 .btn{padding:9px 18px;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:500;font-family:var(--font-body);transition:all 0.15s;border:none;}
 .btn-primary{background:var(--accent);color:#0e0f0d;}.btn-primary:hover{background:#d4f570;}
 .btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2);}.btn-outline:hover{border-color:var(--text2);color:var(--text);}
@@ -252,9 +251,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
               <option>Crypto</option><option>MutualFund</option><option>SGB</option>
             </select>
             <select class="filter-select" id="holdingsPnlFilter" onchange="renderHoldingsTable()">
-              <option value="">All P&L</option>
-              <option value="pos">Gainers</option>
-              <option value="neg">Losers</option>
+              <option value="">All P&L</option><option value="pos">Gainers</option><option value="neg">Losers</option>
             </select>
             <button class="filter-clear" onclick="clearFilters('holdings')">Clear</button>
           </div>
@@ -304,17 +301,16 @@ tr:hover td{background:rgba(255,255,255,0.02);}
                 <option value="SGB">SGB / Gold Bond</option>
               </select>
             </div>
-            <!-- Name search with autocomplete -->
             <div class="form-group" style="grid-column:span 2;min-width:0;">
               <label>Search by company name or ticker</label>
-              <input type="text" id="f_search" placeholder="Type company name or ticker to search Yahoo Finance…" autocomplete="off"
+              <input type="text" id="f_search" placeholder="Type to search Yahoo Finance…" autocomplete="off"
                 oninput="onSearchInput()" onkeydown="onSearchKey(event)"/>
-              <div id="autocomplete-list" class="autocomplete-list" style="display:none;"></div>
+              <div id="ac-search" class="autocomplete-list" style="display:none;"></div>
             </div>
             <div class="form-group">
-              <label>Ticker <span style="font-size:10px;color:var(--teal);">(auto-filled from search)</span></label>
+              <label>Ticker <span style="font-size:10px;color:var(--teal);">(auto-filled)</span></label>
               <input type="text" id="f_ticker" placeholder="RELIANCE.NS · AIR.DE · BTC" oninput="onTickerInput()" autocomplete="off"/>
-              <div id="ticker-autocomplete-list" class="autocomplete-list" style="display:none;"></div>
+              <div id="ac-ticker" class="autocomplete-list" style="display:none;"></div>
             </div>
             <div class="form-group">
               <label>Name</label>
@@ -365,10 +361,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <div style="font-size:12px;color:var(--text2);line-height:2.2;">
             <span class="pill">RELIANCE.NS</span> NSE &nbsp;
             <span class="pill">500325.BO</span> BSE &nbsp;
-            <span class="pill">119598</span> MF scheme code &nbsp;
+            <span class="pill">119598</span> MF scheme code (6 digits) &nbsp;
             <span class="pill">SGB</span> / <span class="pill">SGBXXX-GB</span> Gold bond<br>
             <span class="pill">AIR.DE</span> Xetra &nbsp;
-            <span class="pill">HSBA.L</span> London &nbsp;
+            <span class="pill">HSBA.L</span> LSE &nbsp;
             <span class="pill">ETR:AIR</span> also works (auto-converts) &nbsp;
             <span class="pill">AAPL</span> US &nbsp;
             <span class="pill">BTC</span> <span class="pill">ETH</span> Crypto
@@ -413,9 +409,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
             <div class="code-block">market,ticker,name,type,date,qty,price,currency,fx_to_eur,notes</div>
             <div style="display:flex;flex-direction:column;gap:10px;margin:14px 0;font-size:13px;color:var(--text2);">
               <div><span class="pill">market</span> → <span class="pill">India</span> <span class="pill">US</span> <span class="pill">Europe</span> <span class="pill">Crypto</span> <span class="pill">MutualFund</span> <span class="pill">SGB</span></div>
-              <div><span class="pill">ticker</span> → Yahoo Finance format preferred: RELIANCE.NS · AAPL · AIR.DE</div>
-              <div><span class="pill">type</span> → buy · sell · dividend · bonus — case insensitive</div>
-              <div><span class="pill">fx_to_eur</span> → leave blank to auto-fetch historical rate for that date</div>
+              <div><span class="pill">ticker</span> → Yahoo Finance format: RELIANCE.NS · AAPL · AIR.DE · ETR:AIR also works</div>
+              <div><span class="pill">type</span> → buy · sell · dividend · bonus (case insensitive)</div>
+              <div><span class="pill">fx_to_eur</span> → leave blank to auto-fetch historical rate</div>
               <div style="background:rgba(232,201,106,0.08);border:1px solid rgba(232,201,106,0.2);border-radius:var(--r);padding:10px 12px;color:var(--gold);font-size:12px;">⚠ Remove commas from numbers — use 1470 not 1,470</div>
             </div>
             <button class="btn btn-primary" onclick="downloadTemplate()">↓ Download template</button>
@@ -440,7 +436,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <h1 class="page-title" style="margin:0;">Live Prices</h1>
           <button class="btn btn-outline btn-sm" onclick="fetchAllPrices(true)">⟳ Refresh now</button>
         </div>
-        <p class="page-sub">Auto-refreshes every 1 minute</p>
+        <p class="page-sub">Auto-refreshes every 1 minute · Via Vercel serverless proxy</p>
         <div class="card">
           <div class="filter-bar">
             <input class="filter-search" id="priceSearch" placeholder="Search ticker or name…" oninput="renderPriceTable()"/>
@@ -450,9 +446,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
               <option>Crypto</option><option>MutualFund</option><option>SGB</option>
             </select>
             <select class="filter-select" id="priceStatusFilter" onchange="renderPriceTable()">
-              <option value="">All</option>
-              <option value="ok">Loaded</option>
-              <option value="fail">Failed</option>
+              <option value="">All</option><option value="ok">Loaded</option><option value="fail">Failed</option>
             </select>
             <button class="filter-clear" onclick="clearFilters('price')">Clear</button>
           </div>
@@ -474,13 +468,11 @@ let parsedRows   = [];
 let autoRefreshTimer = null;
 let isFetching   = false;
 const fxCache    = {};
-
-// Sort state per table: col = field name, dir = 1 asc / -1 desc
 const sortState  = {
-  holdings:  { col: 'currentValueEur', dir: -1 },
-  daily:     { col: 'dailyPnlEur',     dir: -1 },
-  prices:    { col: null,              dir: -1 },
-  tx:        { col: 'date',            dir: -1 }
+  holdings: { col:'currentValueEur', dir:-1 },
+  daily:    { col:'dailyPnlEur',     dir:-1 },
+  prices:   { col:null,              dir:-1 },
+  tx:       { col:'date',            dir:-1 }
 };
 
 const FALLBACK_FX = { EUR:1, USD:0.92, INR:0.011, GBP:1.16 };
@@ -496,215 +488,106 @@ const CRYPTO_IDS  = {
 };
 
 // ═══════════════════════════════════════
-// FORMAT HELPERS
+// HELPERS
 // ═══════════════════════════════════════
 function getBase()     { return document.getElementById('baseCurrency').value; }
 function getBaseRate() { return FALLBACK_FX[getBase()] || 1; }
 function toBase(eur)   { return eur / getBaseRate(); }
 function sym()         { return SYM[getBase()] || ''; }
-
 function fmtN(v) {
-  if (v === null || v === undefined || isNaN(v)) return '—';
-  const a = Math.abs(v);
-  if (a >= 1e7)  return sym() + (v/1e7).toFixed(2) + 'Cr';
-  if (a >= 1e5)  return sym() + (v/1e5).toFixed(2) + 'L';
-  if (a >= 1000) return sym() + Math.round(v).toLocaleString('en');
-  return sym() + v.toFixed(2);
+  if (v===null||v===undefined||isNaN(v)) return '—';
+  const a=Math.abs(v);
+  if(a>=1e7) return sym()+(v/1e7).toFixed(2)+'Cr';
+  if(a>=1e5) return sym()+(v/1e5).toFixed(2)+'L';
+  if(a>=1000) return sym()+Math.round(v).toLocaleString('en');
+  return sym()+v.toFixed(2);
 }
-function fmtPct(v)  { if (v === null || isNaN(v)) return '—'; return (v>=0?'+':'') + v.toFixed(2) + '%'; }
-function fmtSign(v) { if (v === null || isNaN(v)) return '—'; return (v>=0?'+':'') + fmtN(v); }
-function clsPnl(v)  { return v >= 0 ? 'pos' : 'neg'; }
-function save()        { localStorage.setItem('folio_txns',   JSON.stringify(transactions)); }
-function savePrices()  { localStorage.setItem('folio_prices', JSON.stringify(livePrices));   }
+function fmtPct(v)  { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+v.toFixed(2)+'%'; }
+function fmtSign(v) { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+fmtN(v); }
+function clsPnl(v)  { return v>=0?'pos':'neg'; }
+function save()       { localStorage.setItem('folio_txns',   JSON.stringify(transactions)); }
+function savePrices() { localStorage.setItem('folio_prices', JSON.stringify(livePrices));   }
+function mktBadge(m)  { return `<span class="badge badge-${(m||'').toLowerCase().replace(/\s/g,'')}">${m}</span>`; }
 
 // ═══════════════════════════════════════
-// TICKER → YAHOO (rule-based)
+// TICKER ROUTING
 // ═══════════════════════════════════════
 function tickerToYahoo(ticker) {
   const t = ticker.toUpperCase().trim();
-  if (t.startsWith('NSE:')) return t.replace('NSE:','') + '.NS';
-  if (t.startsWith('BSE:')) return t.replace('BSE:','') + '.BO';
-  if (t.startsWith('ETR:')) return t.replace('ETR:','') + '.DE';
-  if (t.startsWith('LSE:')) return t.replace('LSE:','') + '.L';
-  if (t.startsWith('EPA:')) return t.replace('EPA:','') + '.PA';
-  if (t.startsWith('AMS:')) return t.replace('AMS:','') + '.AS';
-  if (t.startsWith('STO:')) return t.replace('STO:','') + '.ST';
-  if (t.startsWith('BIT:')) return t.replace('BIT:','') + '.MI';
+  if(t.startsWith('NSE:')) return t.replace('NSE:','')+'.NS';
+  if(t.startsWith('BSE:')) return t.replace('BSE:','')+'.BO';
+  if(t.startsWith('ETR:')) return t.replace('ETR:','')+'.DE';
+  if(t.startsWith('LSE:')) return t.replace('LSE:','')+'.L';
+  if(t.startsWith('EPA:')) return t.replace('EPA:','')+'.PA';
+  if(t.startsWith('AMS:')) return t.replace('AMS:','')+'.AS';
+  if(t.startsWith('STO:')) return t.replace('STO:','')+'.ST';
+  if(t.startsWith('BIT:')) return t.replace('BIT:','')+'.MI';
   return t;
 }
 
 function getPriceSource(ticker) {
   const t = ticker.toUpperCase().trim();
-  if (t === 'SGB' || t.startsWith('SGB') || t.endsWith('-GB')) return { type:'gold' };
-  if (/^\d{6}$/.test(t))                                        return { type:'amfi', code:t };
-  if (CRYPTO_IDS[t])                                            return { type:'crypto', id:CRYPTO_IDS[t] };
-  return { type:'yahoo', symbol: tickerToYahoo(t) };
+  if(t==='SGB'||t.startsWith('SGB')||t.endsWith('-GB')) return {type:'gold'};
+  if(/^\d{6}$/.test(t))                                  return {type:'amfi', code:t};
+  if(CRYPTO_IDS[t])                                       return {type:'crypto', id:CRYPTO_IDS[t]};
+  return {type:'yahoo', symbol:tickerToYahoo(t)};
 }
 
 function srcLabel(ticker) {
-  const s = getPriceSource(ticker);
-  const labels = { yahoo:'<span class="ps ps-yahoo">Yahoo</span>', crypto:'<span class="ps ps-coingecko">CoinGecko</span>', amfi:'<span class="ps ps-amfi">AMFI</span>', gold:'<span class="ps ps-gold">Gold</span>' };
-  return labels[s.type] || '';
+  const s=getPriceSource(ticker);
+  const m={yahoo:'<span class="ps ps-yahoo">Yahoo</span>',crypto:'<span class="ps ps-coingecko">CoinGecko</span>',amfi:'<span class="ps ps-amfi">AMFI</span>',gold:'<span class="ps ps-gold">Gold</span>'};
+  return m[s.type]||'';
 }
-
-function mktBadge(m) {
-  return `<span class="badge badge-${(m||'').toLowerCase().replace(/\s/g,'')}">${m}</span>`;
-}
-
-// ═══════════════════════════════════════
-// YAHOO AUTOCOMPLETE SEARCH
-// ═══════════════════════════════════════
-let searchDebounce = null;
-let acSelectedIdx  = -1;
-let acResults      = [];
-let acTarget       = null; // 'search' or 'ticker'
-
-async function yahooSearch(query) {
-  try {
-    const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0&listsCount=0`, { headers:{'Accept':'application/json'} });
-    if (!r.ok) return [];
-    const d = await r.json();
-    return (d.quotes || []).filter(q => q.symbol && q.quoteType !== 'OPTION');
-  } catch(e) { return []; }
-}
-
-function showAutocomplete(results, targetId) {
-  const listId = targetId === 'f_search' ? 'autocomplete-list' : 'ticker-autocomplete-list';
-  const list   = document.getElementById(listId);
-  acResults    = results;
-  acSelectedIdx = -1;
-  acTarget     = targetId;
-
-  if (!results.length) { list.style.display = 'none'; return; }
-
-  list.innerHTML = results.map((q, i) =>
-    `<div class="autocomplete-item" data-idx="${i}" onmousedown="selectResult(${i})">
-      <div class="autocomplete-ticker">${q.symbol}</div>
-      <div class="autocomplete-name">${q.shortname || q.longname || ''}</div>
-      <div class="autocomplete-meta">${q.exchDisp || ''} · ${q.typeDisp || ''}</div>
-    </div>`
-  ).join('');
-  list.style.display = 'block';
-}
-
-function hideAutocomplete() {
-  document.getElementById('autocomplete-list').style.display = 'none';
-  document.getElementById('ticker-autocomplete-list').style.display = 'none';
-  acResults = []; acSelectedIdx = -1;
-}
-
-function selectResult(idx) {
-  const q = acResults[idx];
-  if (!q) return;
-  document.getElementById('f_ticker').value = q.symbol;
-  document.getElementById('f_name').value   = q.shortname || q.longname || q.symbol;
-  document.getElementById('f_search').value = q.shortname || q.longname || q.symbol;
-  // Auto-detect currency from exchange
-  const exchCurrency = { NS:'INR', BO:'INR', DE:'EUR', L:'GBP', PA:'EUR', AS:'EUR', MI:'EUR' };
-  const suffix = q.symbol.split('.').pop();
-  const cur    = exchCurrency[suffix] || 'USD';
-  document.getElementById('f_currency').value = cur;
-  hideAutocomplete();
-  autoFxSingle();
-}
-
-function onSearchKey(e) {
-  const list = document.getElementById('autocomplete-list');
-  const items = list.querySelectorAll('.autocomplete-item');
-  if (e.key === 'ArrowDown') { acSelectedIdx = Math.min(acSelectedIdx+1, items.length-1); highlightAc(items); e.preventDefault(); }
-  else if (e.key === 'ArrowUp') { acSelectedIdx = Math.max(acSelectedIdx-1, -1); highlightAc(items); e.preventDefault(); }
-  else if (e.key === 'Enter' && acSelectedIdx >= 0) { selectResult(acSelectedIdx); e.preventDefault(); }
-  else if (e.key === 'Escape') { hideAutocomplete(); }
-}
-
-function highlightAc(items) {
-  items.forEach((el,i) => el.classList.toggle('selected', i===acSelectedIdx));
-}
-
-function onSearchInput() {
-  const q = document.getElementById('f_search').value.trim();
-  clearTimeout(searchDebounce);
-  if (q.length < 2) { hideAutocomplete(); return; }
-  const list = document.getElementById('autocomplete-list');
-  list.innerHTML = '<div class="autocomplete-loading"><span class="spinner"></span> Searching…</div>';
-  list.style.display = 'block';
-  searchDebounce = setTimeout(async () => {
-    const results = await yahooSearch(q);
-    showAutocomplete(results, 'f_search');
-  }, 300);
-}
-
-function onTickerInput() {
-  const q = document.getElementById('f_ticker').value.trim();
-  clearTimeout(searchDebounce);
-  if (q.length < 2) { document.getElementById('ticker-autocomplete-list').style.display='none'; return; }
-  const list = document.getElementById('ticker-autocomplete-list');
-  list.innerHTML = '<div class="autocomplete-loading"><span class="spinner"></span> Searching…</div>';
-  list.style.display = 'block';
-  searchDebounce = setTimeout(async () => {
-    const results = await yahooSearch(q);
-    showAutocomplete(results, 'f_ticker');
-  }, 300);
-}
-
-// Close autocomplete on outside click
-document.addEventListener('click', e => {
-  if (!e.target.closest('.form-group')) hideAutocomplete();
-});
 
 // ═══════════════════════════════════════
 // PRICE FETCHERS
+// The key fix: Yahoo calls go through /api/price (Vercel serverless)
+// which runs server-side where CORS doesn't apply
 // ═══════════════════════════════════════
-async function fetchYahoo(symbol) {
-  const encoded = encodeURIComponent(symbol);
-  for (const base of ['query1','query2']) {
-    try {
-      const r = await fetch(`https://${base}.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1d&range=5d`, { headers:{'Accept':'application/json'} });
-      if (!r.ok) continue;
-      const d = await r.json();
-      const res = d?.chart?.result?.[0];
-      if (!res) continue;
-      const meta   = res.meta;
-      const closes = res.indicators?.quote?.[0]?.close?.filter(c=>c!=null) || [];
-      const price  = meta.regularMarketPrice || closes[closes.length-1];
-      const prev   = meta.chartPreviousClose || meta.previousClose || closes[closes.length-2] || price;
-      if (!price) continue;
-      return { price, prevClose: prev, currency: meta.currency || 'USD', source: 'Yahoo Finance' };
-    } catch(e) { continue; }
-  }
-  return null;
+async function fetchYahooViaProxy(symbol) {
+  try {
+    // /api/price is our Vercel serverless function — no CORS issues
+    const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const result = d?.chart?.result?.[0];
+    if (!result) return null;
+    const meta   = result.meta;
+    const closes = result.indicators?.quote?.[0]?.close?.filter(c=>c!=null) || [];
+    const price  = meta.regularMarketPrice || closes[closes.length-1];
+    const prev   = meta.chartPreviousClose || meta.previousClose || closes[closes.length-2] || price;
+    if (!price) return null;
+    return { price, prevClose:prev, currency:meta.currency||'USD', source:'Yahoo Finance' };
+  } catch(e) { return null; }
 }
 
 async function fetchGold() {
-  // Try Yahoo Finance gold futures
+  // Gold via our proxy (GC=F = gold futures on Yahoo)
   try {
-    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=5d', { headers:{'Accept':'application/json'} });
+    const r = await fetch('/api/price?symbol=GC%3DF');
     if (r.ok) {
-      const d   = await r.json();
-      const res = d?.chart?.result?.[0];
-      if (res) {
-        const meta   = res.meta;
-        const closes = res.indicators?.quote?.[0]?.close?.filter(c=>c!=null) || [];
+      const d = await r.json();
+      const result = d?.chart?.result?.[0];
+      if (result) {
+        const meta   = result.meta;
+        const closes = result.indicators?.quote?.[0]?.close?.filter(c=>c!=null) || [];
         const priceUSD = meta.regularMarketPrice || closes[closes.length-1];
-        const prevUSD  = meta.chartPreviousClose  || closes[closes.length-2] || priceUSD;
+        const prevUSD  = meta.chartPreviousClose || closes[closes.length-2] || priceUSD;
         if (priceUSD) {
-          const usdToInr    = 1 / (FALLBACK_FX['INR'] || 0.011);
-          const gramFactor  = 1 / 31.1035;
-          return { price: priceUSD*gramFactor*usdToInr, prevClose: prevUSD*gramFactor*usdToInr, currency:'INR', source:'Gold (XAU/USD)' };
+          const usdToInr = 1/(FALLBACK_FX['INR']||0.011);
+          const g = 1/31.1035;
+          return { price:priceUSD*g*usdToInr, prevClose:prevUSD*g*usdToInr, currency:'INR', source:'Gold (XAU/USD)' };
         }
       }
     }
   } catch(e) {}
-  // Fallback: CoinGecko PAXG
+  // Fallback: CoinGecko PAXG (no CORS issues)
   try {
     const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=inr');
     if (r.ok) {
       const d = await r.json();
       const ozInr = d?.['pax-gold']?.inr;
-      if (ozInr) {
-        const g = ozInr / 31.1035;
-        return { price: g, prevClose: g, currency:'INR', source:'Gold (CoinGecko)' };
-      }
+      if (ozInr) { const g=ozInr/31.1035; return { price:g, prevClose:g, currency:'INR', source:'Gold (CoinGecko)' }; }
     }
   } catch(e) {}
   return null;
@@ -715,664 +598,521 @@ async function fetchAMFI(code) {
     const r = await fetch(`https://api.mfapi.in/mf/${code}`);
     if (!r.ok) return null;
     const d = await r.json();
-    if (d.status === 'SUCCESS' && d.data?.length) {
-      const price    = parseFloat(d.data[0].nav);
-      const prevClose= d.data[1] ? parseFloat(d.data[1].nav) : price;
-      return { price, prevClose, currency:'INR', source:'AMFI', name: d.meta?.scheme_name || null };
+    if (d.status==='SUCCESS' && d.data?.length) {
+      return { price:parseFloat(d.data[0].nav), prevClose:d.data[1]?parseFloat(d.data[1].nav):parseFloat(d.data[0].nav), currency:'INR', source:'AMFI', name:d.meta?.scheme_name||null };
     }
   } catch(e) {}
   return null;
 }
 
-function priceToEur(price, currency) {
-  return price * (FALLBACK_FX[currency] || 1);
+async function fetchCryptoBatch(tickers) {
+  const ids = tickers.map(t=>getPriceSource(t).id).filter(Boolean).join(',');
+  if (!ids) return {};
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids=${ids}&price_change_percentage=24h`);
+    if (!r.ok) return {};
+    const list = await r.json();
+    const result = {};
+    list.forEach(coin => {
+      const ticker = tickers.find(t=>getPriceSource(t).id===coin.id);
+      if (ticker) {
+        const price = coin.current_price;
+        result[ticker] = { price, prevClose:price-(coin.price_change_24h||0), currency:'EUR', source:'CoinGecko' };
+      }
+    });
+    return result;
+  } catch(e) { return {}; }
 }
+
+function priceToEur(price, currency) { return price*(FALLBACK_FX[currency]||1); }
 
 // ═══════════════════════════════════════
 // FETCH ALL — PARALLEL
 // ═══════════════════════════════════════
-async function fetchAllPrices(manual = false) {
-  if (isFetching && !manual) return;
+async function fetchAllPrices(manual=false) {
+  if (isFetching&&!manual) return;
   const holdings = computeHoldings();
   if (!holdings.length) { setRefreshStatus('No holdings', true); return; }
-
-  isFetching = true;
+  isFetching=true;
   setRefreshStatus('Fetching…', false);
 
-  const tickers = [...new Set(holdings.map(h => h.ticker))];
+  const tickers = [...new Set(holdings.map(h=>h.ticker))];
   const byType  = { yahoo:[], crypto:[], amfi:[], gold:[] };
-  tickers.forEach(t => { const s = getPriceSource(t); byType[s.type].push(t); });
+  tickers.forEach(t => byType[getPriceSource(t).type].push(t));
 
-  let done = 0, failed = 0;
-  const mark = (ticker, result) => {
-    if (result && result.price > 0) { livePrices[ticker] = { ...result, ts: Date.now() }; done++; }
-    else failed++;
-  };
+  let done=0, failed=0;
+  const mark=(ticker,result)=>{ if(result&&result.price>0){livePrices[ticker]={...result,ts:Date.now()};done++;}else{failed++;} };
 
-  // Gold — fetch once, apply to all SGB tickers
-  const goldPromise = (async () => {
-    if (!byType.gold.length) return;
-    const result = await fetchGold();
-    byType.gold.forEach(t => mark(t, result));
+  // Gold — once, shared across all SGB tickers
+  const goldPromise=(async()=>{
+    if(!byType.gold.length) return;
+    const result=await fetchGold();
+    byType.gold.forEach(t=>mark(t,result));
   })();
 
-  // Yahoo — all in parallel
-  const yahooPromises = byType.yahoo.map(async ticker => {
-    const src = getPriceSource(ticker);
-    mark(ticker, await fetchYahoo(src.symbol));
+  // Yahoo — ALL in parallel via /api/price proxy
+  const yahooPromises=byType.yahoo.map(async ticker=>{
+    const src=getPriceSource(ticker);
+    mark(ticker, await fetchYahooViaProxy(src.symbol));
   });
 
-  // Crypto — batch via CoinGecko markets endpoint
-  const cryptoPromise = (async () => {
-    if (!byType.crypto.length) return;
-    const ids = byType.crypto.map(t => getPriceSource(t).id).join(',');
-    try {
-      const r = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids=${ids}&price_change_percentage=24h`);
-      if (r.ok) {
-        const list = await r.json();
-        byType.crypto.forEach(ticker => {
-          const id   = getPriceSource(ticker).id;
-          const coin = list.find(c => c.id === id);
-          if (coin) {
-            const price = coin.current_price;
-            const prev  = price - (coin.price_change_24h || 0);
-            mark(ticker, { price, prevClose: prev, currency:'EUR', source:'CoinGecko' });
-          } else { failed++; }
-        });
-      } else { byType.crypto.forEach(() => failed++); }
-    } catch(e) { byType.crypto.forEach(() => failed++); }
+  // Crypto — single batch call
+  const cryptoPromise=(async()=>{
+    if(!byType.crypto.length) return;
+    const results=await fetchCryptoBatch(byType.crypto);
+    byType.crypto.forEach(t=>mark(t, results[t]||null));
   })();
 
   // AMFI — parallel
-  const amfiPromises = byType.amfi.map(async ticker => {
-    const src = getPriceSource(ticker);
-    const result = await fetchAMFI(src.code);
-    mark(ticker, result);
-    if (result?.name) {
-      const tx = transactions.find(t => t.ticker === ticker && !t.name.match(/^\d/));
-      if (!tx) transactions.filter(t => t.ticker === ticker).forEach(t => { if(t.name === ticker) t.name = result.name; });
-    }
+  const amfiPromises=byType.amfi.map(async ticker=>{
+    const result=await fetchAMFI(getPriceSource(ticker).code);
+    mark(ticker,result);
+    // Update name from AMFI if it was a scheme code
+    if(result?.name) transactions.filter(t=>t.ticker===ticker&&(t.name===ticker||/^\d+$/.test(t.name))).forEach(t=>t.name=result.name);
   });
 
-  await Promise.allSettled([goldPromise, ...yahooPromises, cryptoPromise, ...amfiPromises]);
-
-  savePrices();
-  isFetching = false;
-  const now = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  await Promise.allSettled([goldPromise,...yahooPromises,cryptoPromise,...amfiPromises]);
+  savePrices(); save();
+  isFetching=false;
+  const now=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   setRefreshStatus(`${done} ok${failed?', '+failed+' ✗':''} · ${now}`, true);
 
-  // Re-render active section
-  const active = document.querySelector('.section.active')?.id;
-  if (active === 'dashboard')    renderDashboard();
-  if (active === 'daily')        renderDailyPnL();
-  if (active === 'holdings')     renderHoldingsTable();
-  if (active === 'prices')       renderPriceTable();
+  const active=document.querySelector('.section.active')?.id;
+  if(active==='dashboard')    renderDashboard();
+  if(active==='daily')        renderDailyPnL();
+  if(active==='holdings')     renderHoldingsTable();
+  if(active==='prices')       renderPriceTable();
 }
 
 function setRefreshStatus(msg, idle) {
-  const dot  = document.getElementById('refreshDot');
-  const stat = document.getElementById('refreshStatus');
-  if (dot)  dot.className = 'refresh-dot' + (idle ? ' idle' : '');
-  if (stat) stat.textContent = msg;
+  const dot=document.getElementById('refreshDot');
+  const stat=document.getElementById('refreshStatus');
+  if(dot)  dot.className='refresh-dot'+(idle?' idle':'');
+  if(stat) stat.textContent=msg;
 }
 
 function startAutoRefresh() {
-  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(() => fetchAllPrices(false), 60000);
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer=setInterval(()=>fetchAllPrices(false), 60000);
 }
+
+// ═══════════════════════════════════════
+// YAHOO AUTOCOMPLETE (search API — no CORS issue, works directly)
+// ═══════════════════════════════════════
+let acDebounce=null, acResults=[], acSelectedIdx=-1;
+
+async function yahooSearch(q) {
+  try {
+    const r=await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&listsCount=0`,{headers:{'Accept':'application/json'}});
+    if(!r.ok) return [];
+    const d=await r.json();
+    return (d.quotes||[]).filter(q=>q.symbol&&q.quoteType!=='OPTION');
+  } catch(e){return[];}
+}
+
+function showAC(results, listId) {
+  const list=document.getElementById(listId);
+  acResults=results; acSelectedIdx=-1;
+  if(!results.length){list.style.display='none';return;}
+  list.innerHTML=results.map((q,i)=>`<div class="autocomplete-item" data-idx="${i}" onmousedown="selectAC(${i})">
+    <div class="ac-ticker">${q.symbol}</div>
+    <div class="ac-name">${q.shortname||q.longname||''}</div>
+    <div class="ac-meta">${q.exchDisp||''} · ${q.typeDisp||''}</div>
+  </div>`).join('');
+  list.style.display='block';
+}
+
+function hideAC(){
+  document.getElementById('ac-search').style.display='none';
+  document.getElementById('ac-ticker').style.display='none';
+  acResults=[]; acSelectedIdx=-1;
+}
+
+function selectAC(idx) {
+  const q=acResults[idx]; if(!q) return;
+  document.getElementById('f_ticker').value=q.symbol;
+  document.getElementById('f_name').value=q.shortname||q.longname||q.symbol;
+  document.getElementById('f_search').value=q.shortname||q.longname||q.symbol;
+  const sufCur={NS:'INR',BO:'INR',DE:'EUR',L:'GBP',PA:'EUR',AS:'EUR',MI:'EUR'};
+  const suf=q.symbol.split('.').pop();
+  document.getElementById('f_currency').value=sufCur[suf]||'USD';
+  hideAC(); autoFxSingle();
+}
+
+function onSearchKey(e){
+  const items=document.getElementById('ac-search').querySelectorAll('.autocomplete-item');
+  if(e.key==='ArrowDown'){acSelectedIdx=Math.min(acSelectedIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('selected',i===acSelectedIdx));e.preventDefault();}
+  else if(e.key==='ArrowUp'){acSelectedIdx=Math.max(acSelectedIdx-1,-1);items.forEach((el,i)=>el.classList.toggle('selected',i===acSelectedIdx));e.preventDefault();}
+  else if(e.key==='Enter'&&acSelectedIdx>=0){selectAC(acSelectedIdx);e.preventDefault();}
+  else if(e.key==='Escape') hideAC();
+}
+
+function onSearchInput(){
+  const q=document.getElementById('f_search').value.trim();
+  clearTimeout(acDebounce);
+  if(q.length<2){hideAC();return;}
+  const list=document.getElementById('ac-search');
+  list.innerHTML='<div class="ac-loading"><span class="spinner"></span> Searching…</div>';
+  list.style.display='block';
+  acDebounce=setTimeout(async()=>{const r=await yahooSearch(q);showAC(r,'ac-search');},300);
+}
+
+function onTickerInput(){
+  const q=document.getElementById('f_ticker').value.trim();
+  clearTimeout(acDebounce);
+  if(q.length<2){document.getElementById('ac-ticker').style.display='none';return;}
+  const list=document.getElementById('ac-ticker');
+  list.innerHTML='<div class="ac-loading"><span class="spinner"></span> Searching…</div>';
+  list.style.display='block';
+  acDebounce=setTimeout(async()=>{const r=await yahooSearch(q);showAC(r,'ac-ticker');},300);
+}
+
+document.addEventListener('click',e=>{if(!e.target.closest('.form-group'))hideAC();});
 
 // ═══════════════════════════════════════
 // HOLDINGS — Google Sheet avg cost logic
 // ═══════════════════════════════════════
 function computeHoldings() {
-  const map = {};
-  [...transactions].sort((a,b) => a.date.localeCompare(b.date)).forEach(tx => {
-    const k = tx.ticker;
-    if (!map[k]) map[k] = {
-      ticker: k, name: tx.name, market: tx.market, currency: tx.currency,
-      buyQty: 0, sellQty: 0, bonusQty: 0,
-      totalBuyCostEur: 0, dividendsEur: 0
-    };
-    const h = map[k];
-    if      (tx.type === 'buy')      { h.buyQty  += tx.qty; h.totalBuyCostEur += tx.amtEur; }
-    else if (tx.type === 'sell')     { h.sellQty += tx.qty; }
-    else if (tx.type === 'bonus')    { h.bonusQty += tx.qty; }
-    else if (tx.type === 'dividend') { h.dividendsEur += tx.amtEur; }
-    // Keep most recent name
-    if (tx.name && tx.name !== tx.ticker) h.name = tx.name;
+  const map={};
+  [...transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(tx=>{
+    const k=tx.ticker;
+    if(!map[k]) map[k]={ticker:k,name:tx.name,market:tx.market,currency:tx.currency,buyQty:0,sellQty:0,bonusQty:0,totalBuyCostEur:0,dividendsEur:0};
+    const h=map[k];
+    if(tx.type==='buy'){h.buyQty+=tx.qty;h.totalBuyCostEur+=tx.amtEur;}
+    else if(tx.type==='sell'){h.sellQty+=tx.qty;}
+    else if(tx.type==='bonus'){h.bonusQty+=tx.qty;}
+    else if(tx.type==='dividend'){h.dividendsEur+=tx.amtEur;}
+    if(tx.name&&tx.name!==tx.ticker&&!/^NSE:|^BSE:|^ETR:/.test(tx.name)) h.name=tx.name;
   });
 
-  return Object.values(map).map(h => {
-    const netQty = h.buyQty - h.sellQty + h.bonusQty;
-    if (netQty < 0.0001) return null; // fully sold — hide
-
-    // Cost basis: reduce proportionally for sold shares
-    const soldFrac       = h.buyQty > 0 ? h.sellQty / h.buyQty : 0;
-    const remainCostEur  = h.totalBuyCostEur * (1 - soldFrac);
-    const avgCostEur     = netQty > 0 ? remainCostEur / netQty : 0;
-
-    const lp = livePrices[h.ticker];
-    let currentPriceEur = avgCostEur;
-    let prevPriceEur    = avgCostEur;
-    let hasLive         = false;
-
-    if (lp && lp.price > 0) {
-      currentPriceEur = priceToEur(lp.price, lp.currency);
-      prevPriceEur    = priceToEur(lp.prevClose || lp.price, lp.currency);
-      hasLive         = true;
+  return Object.values(map).map(h=>{
+    const netQty=h.buyQty-h.sellQty+h.bonusQty;
+    if(netQty<0.0001) return null;
+    const soldFrac=h.buyQty>0?h.sellQty/h.buyQty:0;
+    const remainCostEur=h.totalBuyCostEur*(1-soldFrac);
+    const avgCostEur=netQty>0?remainCostEur/netQty:0;
+    const lp=livePrices[h.ticker];
+    let currentPriceEur=avgCostEur, prevPriceEur=avgCostEur, hasLive=false;
+    if(lp&&lp.price>0){
+      currentPriceEur=priceToEur(lp.price,lp.currency);
+      prevPriceEur=priceToEur(lp.prevClose||lp.price,lp.currency);
+      hasLive=true;
     }
-
-    const currentValueEur = currentPriceEur * netQty;
-    const prevValueEur    = prevPriceEur    * netQty;
-    const pnlVsCostEur    = currentValueEur - remainCostEur;
-    const pnlVsCostPct    = remainCostEur > 0 ? (pnlVsCostEur / remainCostEur) * 100 : 0;
-    const dailyPnlEur     = hasLive ? currentValueEur - prevValueEur : 0;
-    const dailyPnlPct     = hasLive && prevValueEur > 0 ? (dailyPnlEur / prevValueEur) * 100 : 0;
-    const divYield        = remainCostEur > 0 ? (h.dividendsEur / remainCostEur) * 100 : 0;
-
-    return {
-      ticker: h.ticker, name: h.name, market: h.market, currency: h.currency,
-      qty: netQty, bonusQty: h.bonusQty, avgCostEur, remainCostEur,
-      currentPriceEur, prevPriceEur, currentValueEur, prevValueEur,
-      hasLive, pnlVsCostEur, pnlVsCostPct, dailyPnlEur, dailyPnlPct,
-      dividendsEur: h.dividendsEur, divYield
-    };
+    const currentValueEur=currentPriceEur*netQty;
+    const prevValueEur=prevPriceEur*netQty;
+    const pnlVsCostEur=currentValueEur-remainCostEur;
+    const pnlVsCostPct=remainCostEur>0?(pnlVsCostEur/remainCostEur)*100:0;
+    const dailyPnlEur=hasLive?currentValueEur-prevValueEur:0;
+    const dailyPnlPct=hasLive&&prevValueEur>0?(dailyPnlEur/prevValueEur)*100:0;
+    return {ticker:h.ticker,name:h.name,market:h.market,currency:h.currency,qty:netQty,bonusQty:h.bonusQty,avgCostEur,remainCostEur,currentPriceEur,prevPriceEur,currentValueEur,prevValueEur,hasLive,pnlVsCostEur,pnlVsCostPct,dailyPnlEur,dailyPnlPct,dividendsEur:h.dividendsEur,divYield:remainCostEur>0?(h.dividendsEur/remainCostEur)*100:0};
   }).filter(Boolean);
 }
 
-// ═══════════════════════════════════════
-// XIRR
-// ═══════════════════════════════════════
-function computeXIRR(flows) {
-  if (flows.length < 2) return null;
-  const t0  = new Date(flows[0].date);
-  const yrs = flows.map(f => (new Date(f.date) - t0) / (365.25 * 86400000));
-  const npv = r => flows.reduce((s,f,i) => s + f.amt / Math.pow(1+r, yrs[i]), 0);
-  let lo = -0.9999, hi = 100, mid = 0;
-  for (let i = 0; i < 300; i++) {
-    mid = (lo+hi)/2; npv(mid) > 0 ? lo=mid : hi=mid;
-    if (hi-lo < 1e-9) break;
-  }
-  return isFinite(mid) ? mid * 100 : null;
+function computeXIRR(flows){
+  if(flows.length<2) return null;
+  const t0=new Date(flows[0].date);
+  const yrs=flows.map(f=>(new Date(f.date)-t0)/(365.25*86400000));
+  const npv=r=>flows.reduce((s,f,i)=>s+f.amt/Math.pow(1+r,yrs[i]),0);
+  let lo=-0.9999,hi=100,mid=0;
+  for(let i=0;i<300;i++){mid=(lo+hi)/2;npv(mid)>0?lo=mid:hi=mid;if(hi-lo<1e-9)break;}
+  return isFinite(mid)?mid*100:null;
 }
 
-function computeMetrics() {
-  const h          = computeHoldings();
-  const totalInv   = h.reduce((s,x) => s + x.remainCostEur,   0);
-  const totalVal   = h.reduce((s,x) => s + x.currentValueEur, 0);
-  const totalDiv   = h.reduce((s,x) => s + x.dividendsEur,    0);
-  const liveH      = h.filter(x => x.hasLive);
-  const totalDaily = liveH.reduce((s,x) => s + x.dailyPnlEur,  0);
-  const totalPrev  = liveH.reduce((s,x) => s + x.prevValueEur, 0);
-  const dailyPct   = totalPrev > 0 ? (totalDaily/totalPrev)*100 : 0;
-  const flows      = [...transactions].sort((a,b) => a.date.localeCompare(b.date))
-    .filter(t => t.type !== 'bonus')
-    .map(tx => ({ date: tx.date, amt: tx.type==='buy' ? -tx.amtEur : tx.amtEur }));
-  if (totalVal > 0) flows.push({ date: new Date().toISOString().slice(0,10), amt: totalVal });
-  const mktAlloc = {};
-  h.forEach(x => { mktAlloc[x.market] = (mktAlloc[x.market]||0) + x.currentValueEur; });
-  return { holdings:h, totalInv, totalVal, totalDiv, totalDaily, dailyPct, xirrVal: flows.length>=2 ? computeXIRR(flows) : null, mktAlloc, hasLive: liveH.length>0 };
+function computeMetrics(){
+  const h=computeHoldings();
+  const totalInv=h.reduce((s,x)=>s+x.remainCostEur,0);
+  const totalVal=h.reduce((s,x)=>s+x.currentValueEur,0);
+  const totalDiv=h.reduce((s,x)=>s+x.dividendsEur,0);
+  const liveH=h.filter(x=>x.hasLive);
+  const totalDaily=liveH.reduce((s,x)=>s+x.dailyPnlEur,0);
+  const totalPrev=liveH.reduce((s,x)=>s+x.prevValueEur,0);
+  const dailyPct=totalPrev>0?(totalDaily/totalPrev)*100:0;
+  const flows=[...transactions].sort((a,b)=>a.date.localeCompare(b.date)).filter(t=>t.type!=='bonus').map(tx=>({date:tx.date,amt:tx.type==='buy'?-tx.amtEur:tx.amtEur}));
+  if(totalVal>0) flows.push({date:new Date().toISOString().slice(0,10),amt:totalVal});
+  const mktAlloc={};
+  h.forEach(x=>{mktAlloc[x.market]=(mktAlloc[x.market]||0)+x.currentValueEur;});
+  return{holdings:h,totalInv,totalVal,totalDiv,totalDaily,dailyPct,xirrVal:flows.length>=2?computeXIRR(flows):null,mktAlloc,hasLive:liveH.length>0};
 }
 
 // ═══════════════════════════════════════
-// SORTING
+// SORT & FILTER
 // ═══════════════════════════════════════
-function sortData(data, key, col, dir) {
-  if (!col) return data;
-  const s = sortState[key];
-  return [...data].sort((a,b) => {
-    let av = a[col], bv = b[col];
-    if (av === null || av === undefined) av = s.dir > 0 ? -Infinity : Infinity;
-    if (bv === null || bv === undefined) bv = s.dir > 0 ? -Infinity : Infinity;
-    if (typeof av === 'string') return dir * av.localeCompare(bv);
-    return dir * (av - bv);
+function sortData(data,key,col,dir){
+  if(!col) return data;
+  return [...data].sort((a,b)=>{
+    let av=a[col],bv=b[col];
+    if(av===null||av===undefined) av=dir>0?-Infinity:Infinity;
+    if(bv===null||bv===undefined) bv=dir>0?-Infinity:Infinity;
+    if(typeof av==='string') return dir*av.localeCompare(bv);
+    return dir*(av-bv);
   });
 }
 
-function onSort(tableKey, col) {
-  const s = sortState[tableKey];
-  s.dir   = s.col === col ? -s.dir : -1;
-  s.col   = col;
-  if (tableKey === 'holdings')     renderHoldingsTable();
-  else if (tableKey === 'daily')   renderDailyPnL();
-  else if (tableKey === 'prices')  renderPriceTable();
-  else if (tableKey === 'tx')      renderTxTable();
+function onSort(key,col){
+  const s=sortState[key];
+  s.dir=s.col===col?-s.dir:-1; s.col=col;
+  if(key==='holdings') renderHoldingsTable();
+  else if(key==='daily') renderDailyPnL();
+  else if(key==='prices') renderPriceTable();
+  else if(key==='tx') renderTxTable();
 }
 
-function thSort(tableKey, col, label) {
-  const s   = sortState[tableKey];
-  const cls = s.col===col ? (s.dir>0?'sort-asc':'sort-desc') : 'sortable';
-  return `<th class="${cls}" onclick="onSort('${tableKey}','${col}')">${label}</th>`;
+function thSort(key,col,label){
+  const s=sortState[key];
+  const cls=s.col===col?(s.dir>0?'sort-asc':'sort-desc'):'sortable';
+  return `<th class="${cls}" onclick="onSort('${key}','${col}')">${label}</th>`;
 }
 
-// ═══════════════════════════════════════
-// FILTER HELPERS
-// ═══════════════════════════════════════
-function gv(id) { const e=document.getElementById(id); return e?e.value.toLowerCase().trim():''; }
+function gv(id){const e=document.getElementById(id);return e?e.value.toLowerCase().trim():'';}
+function matchSearch(h,q){if(!q)return true;return(h.ticker||'').toLowerCase().includes(q)||(h.name||'').toLowerCase().includes(q);}
 
-function matchSearch(h, q) {
-  if (!q) return true;
-  return (h.ticker||'').toLowerCase().includes(q) || (h.name||'').toLowerCase().includes(q);
-}
-
-function clearFilters(section) {
-  const map = {
-    holdings: ['holdingsSearch','holdingsMktFilter','holdingsPnlFilter'],
-    daily:    ['dailySearch','dailyMktFilter'],
-    price:    ['priceSearch','priceMktFilter','priceStatusFilter'],
-    tx:       ['txSearch','txTypeFilter','txMktFilter']
-  };
-  (map[section]||[]).forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  if (section==='holdings') renderHoldingsTable();
-  if (section==='daily')    renderDailyPnL();
-  if (section==='price')    renderPriceTable();
-  if (section==='tx')       renderTxTable();
+function clearFilters(s){
+  const map={holdings:['holdingsSearch','holdingsMktFilter','holdingsPnlFilter'],daily:['dailySearch','dailyMktFilter'],price:['priceSearch','priceMktFilter','priceStatusFilter'],tx:['txSearch','txTypeFilter','txMktFilter']};
+  (map[s]||[]).forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  if(s==='holdings')renderHoldingsTable();if(s==='daily')renderDailyPnL();if(s==='price')renderPriceTable();if(s==='tx')renderTxTable();
 }
 
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
-function showTab(t) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item,.mobile-tab').forEach(b => b.classList.remove('active'));
+function showTab(t){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item,.mobile-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById(t).classList.add('active');
-  const keys = { dashboard:'dashboard', daily:'daily', holdings:'hold', transactions:'trans', add:'add', import:'import', prices:'price' };
-  document.querySelectorAll('.nav-item').forEach(b => { if(b.textContent.toLowerCase().includes(keys[t]||t.slice(0,4))) b.classList.add('active'); });
-  document.querySelectorAll('.mobile-tab').forEach(b => { if(b.textContent.toLowerCase().includes(keys[t]||t.slice(0,4))) b.classList.add('active'); });
-  if (t==='dashboard')    renderDashboard();
-  if (t==='daily')        renderDailyPnL();
-  if (t==='holdings')     renderHoldingsTable();
-  if (t==='transactions') renderTxTable();
-  if (t==='prices')       renderPriceTable();
+  const keys={dashboard:'dashboard',daily:'daily',holdings:'hold',transactions:'trans',add:'add',import:'import',prices:'price'};
+  document.querySelectorAll('.nav-item').forEach(b=>{if(b.textContent.toLowerCase().includes(keys[t]||t.slice(0,4)))b.classList.add('active');});
+  document.querySelectorAll('.mobile-tab').forEach(b=>{if(b.textContent.toLowerCase().includes(keys[t]||t.slice(0,4)))b.classList.add('active');});
+  if(t==='dashboard')renderDashboard();
+  if(t==='daily')renderDailyPnL();
+  if(t==='holdings')renderHoldingsTable();
+  if(t==='transactions')renderTxTable();
+  if(t==='prices')renderPriceTable();
 }
 
-function showImpTab(t) {
-  ['upload','paste','template'].forEach(x => document.getElementById('imp-'+x).style.display = x===t?'block':'none');
-  document.querySelectorAll('.tab-inner').forEach((b,i) => b.classList.toggle('active', ['upload','paste','template'][i]===t));
+function showImpTab(t){
+  ['upload','paste','template'].forEach(x=>document.getElementById('imp-'+x).style.display=x===t?'block':'none');
+  document.querySelectorAll('.tab-inner').forEach((b,i)=>b.classList.toggle('active',['upload','paste','template'][i]===t));
 }
 
 // ═══════════════════════════════════════
 // ADD FORM
 // ═══════════════════════════════════════
-function toggleFormFields() {
-  const type = document.getElementById('f_type').value;
-  document.getElementById('qtyGroup').style.opacity   = type==='dividend' ? '0.4' : '1';
-  document.getElementById('priceGroup').style.opacity = type==='bonus'    ? '0.4' : '1';
-  if (type==='bonus') document.getElementById('f_price').value = '0';
+function toggleFormFields(){
+  const type=document.getElementById('f_type').value;
+  document.getElementById('qtyGroup').style.opacity=type==='dividend'?'0.4':'1';
+  document.getElementById('priceGroup').style.opacity=type==='bonus'?'0.4':'1';
+  if(type==='bonus') document.getElementById('f_price').value='0';
 }
 
-async function autoFxSingle() {
-  const currency = document.getElementById('f_currency').value;
-  const date     = document.getElementById('f_date').value;
-  const badge    = document.getElementById('fxSourceBadge');
-  if (!date || currency==='EUR') {
-    document.getElementById('f_fx').value = '1';
-    badge.textContent = 'manual'; badge.className = 'fx-manual'; return;
-  }
-  badge.innerHTML = '<span class="spinner"></span>';
-  const rate = await fetchHistoricalFX(currency, date);
-  document.getElementById('f_fx').value = rate.toFixed(6);
-  badge.textContent = 'auto ✓'; badge.className = 'fx-auto';
+async function autoFxSingle(){
+  const currency=document.getElementById('f_currency').value;
+  const date=document.getElementById('f_date').value;
+  const badge=document.getElementById('fxSourceBadge');
+  if(!date||currency==='EUR'){document.getElementById('f_fx').value='1';badge.textContent='manual';badge.className='fx-manual';return;}
+  badge.innerHTML='<span class="spinner"></span>';
+  const rate=await fetchHistoricalFX(currency,date);
+  document.getElementById('f_fx').value=rate.toFixed(6);
+  badge.textContent='auto ✓';badge.className='fx-auto';
 }
 
-async function fetchHistoricalFX(currency, date) {
-  if (currency==='EUR') return 1;
-  const key = currency+'_'+date;
-  if (fxCache[key]) return fxCache[key];
-  try {
-    const r = await fetch(`https://api.frankfurter.app/${date}?from=${currency}&to=EUR`);
-    const d = await r.json();
-    if (d.rates?.EUR) { fxCache[key] = d.rates.EUR; return d.rates.EUR; }
-  } catch(e) {}
-  return FALLBACK_FX[currency] || 1;
+async function fetchHistoricalFX(currency,date){
+  if(currency==='EUR') return 1;
+  const key=currency+'_'+date;
+  if(fxCache[key]) return fxCache[key];
+  try{
+    const r=await fetch(`https://api.frankfurter.app/${date}?from=${currency}&to=EUR`);
+    const d=await r.json();
+    if(d.rates?.EUR){fxCache[key]=d.rates.EUR;return d.rates.EUR;}
+  }catch(e){}
+  return FALLBACK_FX[currency]||1;
 }
 
-function addTx() {
-  const ticker = document.getElementById('f_ticker').value.trim().toUpperCase();
-  const date   = document.getElementById('f_date').value;
-  const type   = document.getElementById('f_type').value;
-  const price  = type==='bonus' ? 0 : (parseFloat(document.getElementById('f_price').value)||0);
-  const msg    = document.getElementById('addMsg');
-  if (!ticker||!date) { msg.textContent='Ticker and date required.'; return; }
-  if (type!=='bonus'&&type!=='dividend'&&price<=0) { msg.textContent='Price must be > 0.'; return; }
-  const qty      = type==='dividend' ? 0 : (parseFloat(document.getElementById('f_qty').value)||0);
-  const currency = document.getElementById('f_currency').value;
-  const fx       = parseFloat(document.getElementById('f_fx').value) || FALLBACK_FX[currency] || 1;
-  const amtOrig  = type==='dividend' ? price : qty*price;
-  const amtEur   = type==='bonus'    ? 0     : amtOrig*fx;
-  transactions.push({
-    id: Date.now()+Math.random(),
-    market: document.getElementById('f_market').value,
-    ticker, name: document.getElementById('f_name').value.trim() || ticker,
-    type, date, qty, price, currency, fx, amtEur,
-    notes:  document.getElementById('f_notes').value.trim(),
-    fxAuto: document.getElementById('fxSourceBadge').classList.contains('fx-auto')
-  });
+function addTx(){
+  const ticker=document.getElementById('f_ticker').value.trim().toUpperCase();
+  const date=document.getElementById('f_date').value;
+  const type=document.getElementById('f_type').value;
+  const price=type==='bonus'?0:(parseFloat(document.getElementById('f_price').value)||0);
+  const msg=document.getElementById('addMsg');
+  if(!ticker||!date){msg.textContent='Ticker and date required.';return;}
+  if(type!=='bonus'&&type!=='dividend'&&price<=0){msg.textContent='Price must be > 0.';return;}
+  const qty=type==='dividend'?0:(parseFloat(document.getElementById('f_qty').value)||0);
+  const currency=document.getElementById('f_currency').value;
+  const fx=parseFloat(document.getElementById('f_fx').value)||FALLBACK_FX[currency]||1;
+  const amtOrig=type==='dividend'?price:qty*price;
+  const amtEur=type==='bonus'?0:amtOrig*fx;
+  transactions.push({id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')});
   save();
-  msg.textContent = 'Added ✓';
-  setTimeout(() => msg.textContent='', 2500);
-  ['f_ticker','f_name','f_qty','f_price','f_notes','f_search'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('addMsg').textContent='Added ✓';
+  setTimeout(()=>document.getElementById('addMsg').textContent='',2500);
+  ['f_ticker','f_name','f_qty','f_price','f_notes','f_search'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
 }
 
-function deleteTx(id) {
-  if (!confirm('Delete this transaction?')) return;
-  transactions = transactions.filter(t => t.id != id);
-  save(); renderTxTable(); renderDashboard();
+function deleteTx(id){
+  if(!confirm('Delete this transaction?'))return;
+  transactions=transactions.filter(t=>t.id!=id);
+  save();renderTxTable();renderDashboard();
 }
 
-function clearAll() {
-  if (!confirm('Delete ALL transactions and price data?')) return;
-  transactions=[]; livePrices={}; save(); savePrices();
-  renderDashboard(); renderHoldingsTable(); renderTxTable();
+function clearAll(){
+  if(!confirm('Delete ALL transactions and price data?'))return;
+  transactions=[];livePrices={};save();savePrices();
+  renderDashboard();renderHoldingsTable();renderTxTable();
 }
 
 // ═══════════════════════════════════════
-// RENDER DASHBOARD
+// DASHBOARD
 // ═══════════════════════════════════════
-function render() { renderDashboard(); }
+function render(){renderDashboard();}
 
-function renderDashboard() {
-  const m      = computeMetrics();
-  const pnl    = toBase(m.totalVal - m.totalInv);
-  const pnlPct = m.totalInv > 0 ? ((m.totalVal-m.totalInv)/m.totalInv)*100 : 0;
-  const divY   = m.totalInv > 0 ? (m.totalDiv/m.totalInv)*100 : 0;
-  const dayVal = toBase(m.totalDaily);
+function renderDashboard(){
+  const m=computeMetrics();
+  const pnl=toBase(m.totalVal-m.totalInv);
+  const pnlPct=m.totalInv>0?((m.totalVal-m.totalInv)/m.totalInv)*100:0;
+  const divY=m.totalInv>0?(m.totalDiv/m.totalInv)*100:0;
+  document.getElementById('lastUpdated').textContent='Last updated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('metricGrid').innerHTML=[
+    {label:'Portfolio value',value:fmtN(toBase(m.totalVal)),sub:m.hasLive?'Live prices':'At cost basis',line:'#4acfb4'},
+    {label:'Total invested',value:fmtN(toBase(m.totalInv)),sub:m.holdings.length+' positions',line:'#5a9ce8'},
+    {label:'Total P&L',value:fmtSign(pnl),sub:fmtPct(pnlPct),cls:clsPnl(pnl),line:pnl>=0?'#c8f060':'#e8604a'},
+    {label:"Today's P&L",value:m.hasLive?fmtSign(toBase(m.totalDaily)):'—',sub:m.hasLive?fmtPct(m.dailyPct):'Refresh prices',cls:clsPnl(m.totalDaily),line:m.totalDaily>=0?'#c8f060':'#e8604a'},
+    {label:'Dividends',value:fmtN(toBase(m.totalDiv)),sub:'Yield '+divY.toFixed(2)+'%',line:'#e8c96a',cls:'pos'},
+  ].map(x=>`<div class="metric" style="--accent-line:${x.line}"><div class="metric-label">${x.label}</div><div class="metric-value ${x.cls||''}">${x.value}</div><div class="metric-sub">${x.sub}</div></div>`).join('');
 
-  document.getElementById('lastUpdated').textContent =
-    'Last updated ' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  const xirrEl=document.getElementById('xirrVal');
+  if(m.xirrVal!==null){xirrEl.textContent=(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%';xirrEl.className='xirr-big '+(m.xirrVal>=0?'pos':'neg');}
+  else{xirrEl.textContent='—';xirrEl.className='xirr-big';}
 
-  document.getElementById('metricGrid').innerHTML = [
-    { label:'Portfolio value', value:fmtN(toBase(m.totalVal)),   sub: m.hasLive?'Live prices':'At cost basis',            line:'#4acfb4' },
-    { label:'Total invested',  value:fmtN(toBase(m.totalInv)),   sub: m.holdings.length+' positions',                     line:'#5a9ce8' },
-    { label:'Total P&L',       value:fmtSign(pnl),               sub: fmtPct(pnlPct), cls: clsPnl(pnl),                  line: pnl>=0?'#c8f060':'#e8604a' },
-    { label:"Today's P&L",     value: m.hasLive?fmtSign(dayVal):'—', sub: m.hasLive?fmtPct(m.dailyPct):'Refresh prices', cls: clsPnl(m.totalDaily), line: m.totalDaily>=0?'#c8f060':'#e8604a' },
-    { label:'Dividends',       value:fmtN(toBase(m.totalDiv)),   sub:'Yield '+divY.toFixed(2)+'%',                        line:'#e8c96a', cls:'pos' },
-  ].map(x => `<div class="metric" style="--accent-line:${x.line}">
-    <div class="metric-label">${x.label}</div>
-    <div class="metric-value ${x.cls||''}">${x.value}</div>
-    <div class="metric-sub">${x.sub}</div>
-  </div>`).join('');
+  const total=Object.values(m.mktAlloc).reduce((s,v)=>s+v,0)||1;
+  document.getElementById('allocMarket').innerHTML=Object.entries(m.mktAlloc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const p=(v/total*100).toFixed(1);return`<div class="alloc-row"><div class="alloc-label">${k}</div><div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[k]||'#888'}"></div></div><div class="alloc-pct">${p}%</div></div>`;}).join('')||'<div class="empty">No data</div>';
+  const topH=[...m.holdings].sort((a,b)=>b.currentValueEur-a.currentValueEur).slice(0,7);
+  document.getElementById('allocHoldings').innerHTML=topH.map(h=>{const p=(h.currentValueEur/total*100).toFixed(1);return`<div class="alloc-row"><div class="alloc-label">${h.ticker}</div><div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[h.market]||'#888'}"></div></div><div class="alloc-pct">${p}%</div></div>`;}).join('')||'<div class="empty">No holdings</div>';
 
-  const xirrEl = document.getElementById('xirrVal');
-  if (m.xirrVal!==null) { xirrEl.textContent=(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%'; xirrEl.className='xirr-big '+(m.xirrVal>=0?'pos':'neg'); }
-  else { xirrEl.textContent='—'; xirrEl.className='xirr-big'; }
+  const strip=document.getElementById('dashDailyStrip');
+  if(m.hasLive){
+    const gainers=[...m.holdings].filter(h=>h.hasLive&&h.dailyPnlEur>0).sort((a,b)=>b.dailyPnlPct-a.dailyPnlPct).slice(0,3);
+    const losers=[...m.holdings].filter(h=>h.hasLive&&h.dailyPnlEur<0).sort((a,b)=>a.dailyPnlPct-b.dailyPnlPct).slice(0,3);
+    strip.innerHTML=`<div class="card" style="margin-bottom:1rem;"><div class="card-title">Today's movers</div><div style="display:flex;gap:2rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;"><div style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Gainers</div>${gainers.map(h=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="font-family:var(--font-mono);">${h.ticker}</span><span class="pos" style="font-family:var(--font-mono);">+${fmtN(toBase(h.dailyPnlEur))} (${fmtPct(h.dailyPnlPct)})</span></div>`).join('')||'<div style="font-size:12px;color:var(--text3);">None</div>'}</div>
+      <div style="flex:1;min-width:180px;"><div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Losers</div>${losers.map(h=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="font-family:var(--font-mono);">${h.ticker}</span><span class="neg" style="font-family:var(--font-mono);">${fmtN(toBase(h.dailyPnlEur))} (${fmtPct(h.dailyPnlPct)})</span></div>`).join('')||'<div style="font-size:12px;color:var(--text3);">None</div>'}</div>
+    </div></div>`;
+  } else { strip.innerHTML=''; }
 
-  const total = Object.values(m.mktAlloc).reduce((s,v)=>s+v,0)||1;
-  document.getElementById('allocMarket').innerHTML =
-    Object.entries(m.mktAlloc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
-      const p=(v/total*100).toFixed(1);
-      return `<div class="alloc-row"><div class="alloc-label">${k}</div><div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[k]||'#888'}"></div></div><div class="alloc-pct">${p}%</div></div>`;
-    }).join('') || '<div class="empty">No data</div>';
-
-  const topH = [...m.holdings].sort((a,b)=>b.currentValueEur-a.currentValueEur).slice(0,7);
-  document.getElementById('allocHoldings').innerHTML =
-    topH.map(h => {
-      const p=(h.currentValueEur/total*100).toFixed(1);
-      return `<div class="alloc-row"><div class="alloc-label">${h.ticker}</div><div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[h.market]||'#888'}"></div></div><div class="alloc-pct">${p}%</div></div>`;
-    }).join('') || '<div class="empty">No holdings</div>';
-
-  // Dashboard daily movers strip
-  const strip = document.getElementById('dashDailyStrip');
-  if (m.hasLive) {
-    const gainers = [...m.holdings].filter(h=>h.hasLive&&h.dailyPnlEur>0).sort((a,b)=>b.dailyPnlPct-a.dailyPnlPct).slice(0,3);
-    const losers  = [...m.holdings].filter(h=>h.hasLive&&h.dailyPnlEur<0).sort((a,b)=>a.dailyPnlPct-b.dailyPnlPct).slice(0,3);
-    strip.innerHTML = `<div class="card" style="margin-bottom:1rem;">
-      <div class="card-title">Today's movers</div>
-      <div style="display:flex;gap:2rem;flex-wrap:wrap;">
-        <div style="flex:1;min-width:180px;">
-          <div style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Gainers</div>
-          ${gainers.map(h=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
-            <span style="font-family:var(--font-mono);">${h.ticker}</span>
-            <span class="pos" style="font-family:var(--font-mono);">+${fmtN(toBase(h.dailyPnlEur))} (${fmtPct(h.dailyPnlPct)})</span>
-          </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">None</div>'}
-        </div>
-        <div style="flex:1;min-width:180px;">
-          <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Losers</div>
-          ${losers.map(h=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
-            <span style="font-family:var(--font-mono);">${h.ticker}</span>
-            <span class="neg" style="font-family:var(--font-mono);">${fmtN(toBase(h.dailyPnlEur))} (${fmtPct(h.dailyPnlPct)})</span>
-          </div>`).join('') || '<div style="font-size:12px;color:var(--text3);">None</div>'}
-        </div>
-      </div>
-    </div>`;
-  } else { strip.innerHTML = ''; }
-
-  // Insights
-  const topDiv = [...m.holdings].filter(h=>h.dividendsEur>0).sort((a,b)=>b.divYield-a.divYield)[0];
-  const topH2  = [...m.holdings].sort((a,b)=>b.currentValueEur-a.currentValueEur)[0];
-  const bonusQ = transactions.filter(t=>t.type==='bonus').reduce((s,t)=>s+t.qty,0);
-  document.getElementById('insightPanel').innerHTML = [
-    topH2   ? `<div class="insight-row"><span class="insight-label">Largest position</span><span class="insight-value">${topH2.ticker} (${(topH2.currentValueEur/total*100).toFixed(1)}%)</span></div>` : '',
-    topDiv  ? `<div class="insight-row"><span class="insight-label">Best div yield</span><span class="insight-value pos">${topDiv.ticker} — ${topDiv.divYield.toFixed(2)}%</span></div>` : '',
-    m.totalDiv>0 ? `<div class="insight-row"><span class="insight-label">Total dividends</span><span class="insight-value">${fmtN(toBase(m.totalDiv))}</span></div>` : '',
-    m.hasLive    ? `<div class="insight-row"><span class="insight-label">Today's P&L</span><span class="insight-value ${clsPnl(m.totalDaily)}">${fmtSign(toBase(m.totalDaily))} (${fmtPct(m.dailyPct)})</span></div>` : '',
-    bonusQ>0     ? `<div class="insight-row"><span class="insight-label">Bonus shares</span><span class="insight-value neu">${bonusQ}</span></div>` : '',
+  const topDiv=[...m.holdings].filter(h=>h.dividendsEur>0).sort((a,b)=>b.divYield-a.divYield)[0];
+  const topH2=[...m.holdings].sort((a,b)=>b.currentValueEur-a.currentValueEur)[0];
+  const bonusQ=transactions.filter(t=>t.type==='bonus').reduce((s,t)=>s+t.qty,0);
+  document.getElementById('insightPanel').innerHTML=[
+    topH2?`<div class="insight-row"><span class="insight-label">Largest position</span><span class="insight-value">${topH2.ticker} (${(topH2.currentValueEur/total*100).toFixed(1)}%)</span></div>`:'',
+    topDiv?`<div class="insight-row"><span class="insight-label">Best div yield</span><span class="insight-value pos">${topDiv.ticker} — ${topDiv.divYield.toFixed(2)}%</span></div>`:'',
+    m.totalDiv>0?`<div class="insight-row"><span class="insight-label">Total dividends</span><span class="insight-value">${fmtN(toBase(m.totalDiv))}</span></div>`:'',
+    m.hasLive?`<div class="insight-row"><span class="insight-label">Today's P&L</span><span class="insight-value ${clsPnl(m.totalDaily)}">${fmtSign(toBase(m.totalDaily))} (${fmtPct(m.dailyPct)})</span></div>`:'',
+    bonusQ>0?`<div class="insight-row"><span class="insight-label">Bonus shares</span><span class="insight-value neu">${bonusQ}</span></div>`:'',
     `<div class="insight-row"><span class="insight-label">Transactions</span><span class="insight-value">${transactions.length}</span></div>`,
-  ].filter(Boolean).join('') || '<div class="empty">Add transactions to see insights</div>';
+  ].filter(Boolean).join('')||'<div class="empty">Add transactions to see insights</div>';
 }
 
 // ═══════════════════════════════════════
-// RENDER DAILY P&L
+// DAILY P&L
 // ═══════════════════════════════════════
-function renderDailyPnL() {
-  const all      = computeHoldings();
-  const q        = gv('dailySearch');
-  const mkt      = gv('dailyMktFilter');
-  const liveAll  = all.filter(h=>h.hasLive);
-  const totalDay = liveAll.reduce((s,h)=>s+h.dailyPnlEur, 0);
-  const totalPrev= liveAll.reduce((s,h)=>s+h.prevValueEur, 0);
-  const dayPct   = totalPrev>0 ? (totalDay/totalPrev)*100 : 0;
-  const totalVsC = all.reduce((s,h)=>s+h.pnlVsCostEur, 0);
-  const totalInv = all.reduce((s,h)=>s+h.remainCostEur, 0);
-  const vsCostPct= totalInv>0 ? (totalVsC/totalInv)*100 : 0;
+function renderDailyPnL(){
+  const all=computeHoldings();
+  const q=gv('dailySearch'),mkt=gv('dailyMktFilter');
+  const liveAll=all.filter(h=>h.hasLive);
+  const totalDay=liveAll.reduce((s,h)=>s+h.dailyPnlEur,0);
+  const totalPrev=liveAll.reduce((s,h)=>s+h.prevValueEur,0);
+  const dayPct=totalPrev>0?(totalDay/totalPrev)*100:0;
+  const totalVsC=all.reduce((s,h)=>s+h.pnlVsCostEur,0);
+  const totalInv=all.reduce((s,h)=>s+h.remainCostEur,0);
+  const vsCostPct=totalInv>0?(totalVsC/totalInv)*100:0;
+  const m=computeMetrics();
 
-  document.getElementById('dailySummaryCards').innerHTML = [
-    { label:"Today's total P&L",   value: fmtSign(toBase(totalDay)),   sub: fmtPct(dayPct)+' vs yesterday close', cls: clsPnl(totalDay) },
-    { label:'Total P&L vs cost',   value: fmtSign(toBase(totalVsC)),   sub: fmtPct(vsCostPct)+' vs what you paid', cls: clsPnl(totalVsC) },
-    { label:'Portfolio value',      value: fmtN(toBase(all.reduce((s,h)=>s+h.currentValueEur,0))), sub: liveAll.length+'/'+all.length+' with live prices', cls:'' },
-    { label:'XIRR (annualised)',    value: computeMetrics().xirrVal!==null?(computeMetrics().xirrVal>=0?'+':'')+computeMetrics().xirrVal.toFixed(2)+'%':'—', sub:'Since first transaction', cls: computeMetrics().xirrVal>=0?'pos':'neg' },
+  document.getElementById('dailySummaryCards').innerHTML=[
+    {label:"Today's total P&L",value:fmtSign(toBase(totalDay)),sub:fmtPct(dayPct)+' vs yesterday close',cls:clsPnl(totalDay)},
+    {label:'Total P&L vs cost',value:fmtSign(toBase(totalVsC)),sub:fmtPct(vsCostPct)+' vs what you paid',cls:clsPnl(totalVsC)},
+    {label:'Portfolio value',value:fmtN(toBase(all.reduce((s,h)=>s+h.currentValueEur,0))),sub:liveAll.length+'/'+all.length+' with live prices',cls:''},
+    {label:'XIRR',value:m.xirrVal!==null?(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%':'—',sub:'Annualised return',cls:m.xirrVal>=0?'pos':'neg'},
   ].map(x=>`<div class="daily-card"><div class="daily-card-label">${x.label}</div><div class="daily-card-value ${x.cls}">${x.value}</div><div class="daily-card-sub">${x.sub}</div></div>`).join('');
 
-  const withLive = all.filter(h=>h.hasLive);
-  const gainers  = [...withLive].sort((a,b)=>b.dailyPnlPct-a.dailyPnlPct).filter(h=>h.dailyPnlEur>0).slice(0,5);
-  const losers   = [...withLive].sort((a,b)=>a.dailyPnlPct-b.dailyPnlPct).filter(h=>h.dailyPnlEur<0).slice(0,5);
+  const withLive=all.filter(h=>h.hasLive);
+  const gainers=[...withLive].sort((a,b)=>b.dailyPnlPct-a.dailyPnlPct).filter(h=>h.dailyPnlEur>0).slice(0,5);
+  const losers=[...withLive].sort((a,b)=>a.dailyPnlPct-b.dailyPnlPct).filter(h=>h.dailyPnlEur<0).slice(0,5);
+  const moverRow=(h,cls)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);"><div><div style="font-family:var(--font-mono);font-weight:500;font-size:13px;">${h.ticker}</div><div style="font-size:11px;color:var(--text3);">${h.name}</div></div><div style="text-align:right;"><div class="${cls}" style="font-family:var(--font-mono);font-size:13px;">${fmtSign(toBase(h.dailyPnlEur))}</div><div class="${cls}" style="font-family:var(--font-mono);font-size:11px;">${fmtPct(h.dailyPnlPct)}</div></div></div>`;
+  document.getElementById('topGainers').innerHTML=gainers.map(h=>moverRow(h,'pos')).join('')||'<div style="font-size:13px;color:var(--text3);padding:1rem 0;">No gainers today</div>';
+  document.getElementById('topLosers').innerHTML=losers.map(h=>moverRow(h,'neg')).join('')||'<div style="font-size:13px;color:var(--text3);padding:1rem 0;">No losers today</div>';
 
-  const moverRow = (h, cls) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
-      <div><div style="font-family:var(--font-mono);font-weight:500;font-size:13px;">${h.ticker}</div><div style="font-size:11px;color:var(--text3);">${h.name}</div></div>
-      <div style="text-align:right;"><div class="${cls}" style="font-family:var(--font-mono);font-size:13px;">${fmtSign(toBase(h.dailyPnlEur))}</div><div class="${cls}" style="font-family:var(--font-mono);font-size:11px;">${fmtPct(h.dailyPnlPct)}</div></div>
-    </div>`;
-  document.getElementById('topGainers').innerHTML = gainers.map(h=>moverRow(h,'pos')).join('') || '<div style="font-size:13px;color:var(--text3);padding:1rem 0;">No gainers today</div>';
-  document.getElementById('topLosers').innerHTML  = losers.map(h=>moverRow(h,'neg')).join('')  || '<div style="font-size:13px;color:var(--text3);padding:1rem 0;">No losers today</div>';
-
-  let data = all.filter(h => matchSearch(h,q) && (!mkt||h.market.toLowerCase()===mkt));
-  data = sortData(data, 'daily', sortState.daily.col, sortState.daily.dir);
-
-  const el = document.getElementById('dailyTable');
-  if (!data.length) { el.innerHTML='<div class="empty">No data</div>'; return; }
-  el.innerHTML = `<table><thead><tr>
-    ${thSort('daily','ticker','Ticker')}
-    ${thSort('daily','market','Market')}
-    ${thSort('daily','qty','Qty')}
-    ${thSort('daily','avgCostEur','Avg cost')}
-    ${thSort('daily','prevPriceEur','Prev close')}
-    ${thSort('daily','currentPriceEur','Current price')}
-    ${thSort('daily','dailyPnlEur','Daily P&L')}
-    ${thSort('daily','dailyPnlPct','Daily %')}
-    ${thSort('daily','pnlVsCostEur','P&L vs cost')}
-    ${thSort('daily','pnlVsCostPct','Vs cost %')}
-  </tr></thead><tbody>` +
-  data.map(h=>`<tr>
-    <td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td>
-    <td>${mktBadge(h.market)}</td>
-    <td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td>
-    <td style="font-family:var(--font-mono);color:var(--text2);">${fmtN(toBase(h.avgCostEur))}</td>
-    <td style="font-family:var(--font-mono);color:var(--text2);">${h.hasLive?fmtN(toBase(h.prevPriceEur)):'—'}</td>
-    <td style="font-family:var(--font-mono);font-weight:500;">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.dailyPnlEur)}">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.dailyPnlPct)}">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.pnlVsCostEur)}">${fmtSign(toBase(h.pnlVsCostEur))}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.pnlVsCostPct)}">${fmtPct(h.pnlVsCostPct)}</td>
-  </tr>`).join('') + '</tbody></table>';
+  let data=all.filter(h=>matchSearch(h,q)&&(!mkt||h.market.toLowerCase()===mkt));
+  data=sortData(data,'daily',sortState.daily.col,sortState.daily.dir);
+  const el=document.getElementById('dailyTable');
+  if(!data.length){el.innerHTML='<div class="empty">No data</div>';return;}
+  el.innerHTML=`<table><thead><tr>${thSort('daily','ticker','Ticker')}${thSort('daily','market','Market')}${thSort('daily','qty','Qty')}${thSort('daily','avgCostEur','Avg cost')}${thSort('daily','prevPriceEur','Prev close')}${thSort('daily','currentPriceEur','Current price')}${thSort('daily','dailyPnlEur','Daily P&L')}${thSort('daily','dailyPnlPct','Daily %')}${thSort('daily','pnlVsCostEur','P&L vs cost')}${thSort('daily','pnlVsCostPct','Vs cost %')}</tr></thead><tbody>`+
+  data.map(h=>`<tr><td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td><td>${mktBadge(h.market)}</td><td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td><td style="font-family:var(--font-mono);color:var(--text2);">${fmtN(toBase(h.avgCostEur))}</td><td style="font-family:var(--font-mono);color:var(--text2);">${h.hasLive?fmtN(toBase(h.prevPriceEur)):'—'}</td><td style="font-family:var(--font-mono);font-weight:500;">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td><td class="${clsPnl(h.dailyPnlEur)}" style="font-family:var(--font-mono);">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td><td class="${clsPnl(h.dailyPnlPct)}" style="font-family:var(--font-mono);">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td><td class="${clsPnl(h.pnlVsCostEur)}" style="font-family:var(--font-mono);">${fmtSign(toBase(h.pnlVsCostEur))}</td><td class="${clsPnl(h.pnlVsCostPct)}" style="font-family:var(--font-mono);">${fmtPct(h.pnlVsCostPct)}</td></tr>`).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
-// RENDER HOLDINGS
+// HOLDINGS TABLE
 // ═══════════════════════════════════════
-function renderHoldingsTable() {
-  const q      = gv('holdingsSearch');
-  const mkt    = gv('holdingsMktFilter');
-  const pnlF   = gv('holdingsPnlFilter');
-  let data = computeHoldings().filter(h =>
-    matchSearch(h,q) &&
-    (!mkt  || h.market.toLowerCase()===mkt) &&
-    (!pnlF || (pnlF==='pos'?h.pnlVsCostEur>=0:h.pnlVsCostEur<0))
-  );
-  data = sortData(data, 'holdings', sortState.holdings.col, sortState.holdings.dir);
-
-  const el = document.getElementById('holdingsTable');
-  if (!data.length) { el.innerHTML='<div class="empty">No holdings match your filters.</div>'; return; }
-  el.innerHTML = `<table><thead><tr>
-    ${thSort('holdings','ticker','Ticker')}
-    ${thSort('holdings','market','Market')}
-    ${thSort('holdings','qty','Qty')}
-    <th>Bonus</th>
-    ${thSort('holdings','avgCostEur','Avg cost')}
-    ${thSort('holdings','currentPriceEur','Price')}
-    ${thSort('holdings','currentValueEur','Value')}
-    ${thSort('holdings','pnlVsCostEur','P&L')}
-    ${thSort('holdings','pnlVsCostPct','P&L %')}
-    ${thSort('holdings','dailyPnlEur','Daily P&L')}
-    ${thSort('holdings','dailyPnlPct','Daily %')}
-    ${thSort('holdings','dividendsEur','Dividends')}
-    ${thSort('holdings','divYield','Div yield')}
-  </tr></thead><tbody>` +
-  data.map(h=>`<tr>
-    <td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td>
-    <td>${mktBadge(h.market)}</td>
-    <td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td>
-    <td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty>0?'+'+h.bonusQty:'—'}</td>
-    <td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))}<span style="font-size:10px;color:var(--text3);"> /unit</span></td>
-    <td style="font-family:var(--font-mono);">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td>
-    <td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.pnlVsCostEur)}">${fmtSign(toBase(h.pnlVsCostEur))}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.pnlVsCostPct)}">${fmtPct(h.pnlVsCostPct)}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.dailyPnlEur)}">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td>
-    <td style="font-family:var(--font-mono);" class="${clsPnl(h.dailyPnlPct)}">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td>
-    <td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td>
-    <td style="font-family:var(--font-mono);" class="${h.divYield>0?'pos':''}">${h.divYield.toFixed(2)}%</td>
-  </tr>`).join('') + '</tbody></table>';
+function renderHoldingsTable(){
+  const q=gv('holdingsSearch'),mkt=gv('holdingsMktFilter'),pnlF=gv('holdingsPnlFilter');
+  let data=computeHoldings().filter(h=>matchSearch(h,q)&&(!mkt||h.market.toLowerCase()===mkt)&&(!pnlF||(pnlF==='pos'?h.pnlVsCostEur>=0:h.pnlVsCostEur<0)));
+  data=sortData(data,'holdings',sortState.holdings.col,sortState.holdings.dir);
+  const el=document.getElementById('holdingsTable');
+  if(!data.length){el.innerHTML='<div class="empty">No holdings match filters.</div>';return;}
+  el.innerHTML=`<table><thead><tr>${thSort('holdings','ticker','Ticker')}${thSort('holdings','market','Market')}${thSort('holdings','qty','Qty')}<th>Bonus</th>${thSort('holdings','avgCostEur','Avg cost')}${thSort('holdings','currentPriceEur','Price')}${thSort('holdings','currentValueEur','Value')}${thSort('holdings','pnlVsCostEur','P&L')}${thSort('holdings','pnlVsCostPct','P&L %')}${thSort('holdings','dailyPnlEur','Daily P&L')}${thSort('holdings','dailyPnlPct','Daily %')}${thSort('holdings','dividendsEur','Dividends')}${thSort('holdings','divYield','Div yield')}</tr></thead><tbody>`+
+  data.map(h=>`<tr><td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td><td>${mktBadge(h.market)}</td><td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td><td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty>0?'+'+h.bonusQty:'—'}</td><td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))}<span style="font-size:10px;color:var(--text3);"> /unit</span></td><td style="font-family:var(--font-mono);">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td><td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td><td class="${clsPnl(h.pnlVsCostEur)}" style="font-family:var(--font-mono);">${fmtSign(toBase(h.pnlVsCostEur))}</td><td class="${clsPnl(h.pnlVsCostPct)}" style="font-family:var(--font-mono);">${fmtPct(h.pnlVsCostPct)}</td><td class="${clsPnl(h.dailyPnlEur)}" style="font-family:var(--font-mono);">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td><td class="${clsPnl(h.dailyPnlPct)}" style="font-family:var(--font-mono);">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td><td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td><td class="${h.divYield>0?'pos':''}" style="font-family:var(--font-mono);">${h.divYield.toFixed(2)}%</td></tr>`).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
-// RENDER PRICE TABLE
+// PRICE TABLE
 // ═══════════════════════════════════════
-function renderPriceTable() {
-  const q      = gv('priceSearch');
-  const mkt    = gv('priceMktFilter');
-  const statF  = gv('priceStatusFilter');
-  const holdings = computeHoldings();
-  let data = [...new Set(holdings.map(h=>h.ticker))].map(ticker => {
-    const h  = holdings.find(x=>x.ticker===ticker);
-    const lp = livePrices[ticker];
-    return { ticker, name:h?.name||'', market:h?.market||'', lp, hasLp:!!(lp&&lp.price>0) };
-  }).filter(d =>
-    matchSearch(d, q) &&
-    (!mkt    || d.market.toLowerCase()===mkt) &&
-    (!statF  || (statF==='ok'?d.hasLp:!d.hasLp))
-  );
-  data = sortData(data, 'prices', sortState.prices.col, sortState.prices.dir);
-
-  const el = document.getElementById('priceTable');
-  if (!data.length) { el.innerHTML='<div class="empty">No tickers match filters.</div>'; return; }
-  el.innerHTML = `<table><thead><tr>
-    ${thSort('prices','ticker','Ticker')}
-    ${thSort('prices','name','Name')}
-    ${thSort('prices','market','Market')}
-    <th>Current price</th><th>Prev close</th>
-    <th>Daily Δ</th><th>Daily %</th>
-    <th>Currency</th><th>EUR equiv.</th>
-    <th>Source</th><th>Updated</th>
-  </tr></thead><tbody>` +
-  data.map(d => {
-    const lp       = d.lp;
-    const price    = lp ? Number(lp.price).toLocaleString('en',{maximumFractionDigits:4})   : '—';
-    const prev     = lp ? Number(lp.prevClose||lp.price).toLocaleString('en',{maximumFractionDigits:4}) : '—';
-    const dayAbs   = lp ? (lp.price - (lp.prevClose||lp.price)) : 0;
-    const dayPct   = lp && lp.prevClose ? ((lp.price-lp.prevClose)/lp.prevClose)*100 : 0;
-    const eurEq    = lp ? fmtN(toBase(priceToEur(lp.price,lp.currency))) : '—';
-    const ts       = lp ? new Date(lp.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '—';
-    return `<tr>
-      <td style="font-family:var(--font-mono);font-weight:500;">${d.ticker}</td>
-      <td style="color:var(--text2);font-size:12px;">${d.name}</td>
-      <td>${mktBadge(d.market)}</td>
-      <td style="font-family:var(--font-mono);font-weight:500;">${price}</td>
-      <td style="font-family:var(--font-mono);color:var(--text2);">${prev}</td>
-      <td style="font-family:var(--font-mono);" class="${clsPnl(dayAbs)}">${lp?(dayAbs>=0?'+':'')+dayAbs.toFixed(3):'—'}</td>
-      <td style="font-family:var(--font-mono);" class="${clsPnl(dayPct)}">${lp?fmtPct(dayPct):'—'}</td>
-      <td style="font-family:var(--font-mono);color:var(--text3);">${lp?.currency||'—'}</td>
-      <td style="font-family:var(--font-mono);">${eurEq}</td>
-      <td>${srcLabel(d.ticker)}</td>
-      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">${ts}</td>
-    </tr>`;
-  }).join('') + '</tbody></table>';
+function renderPriceTable(){
+  const q=gv('priceSearch'),mkt=gv('priceMktFilter'),statF=gv('priceStatusFilter');
+  const holdings=computeHoldings();
+  let data=[...new Set(holdings.map(h=>h.ticker))].map(ticker=>{
+    const h=holdings.find(x=>x.ticker===ticker);
+    const lp=livePrices[ticker];
+    return{ticker,name:h?.name||'',market:h?.market||'',lp,hasLp:!!(lp&&lp.price>0)};
+  }).filter(d=>matchSearch(d,q)&&(!mkt||d.market.toLowerCase()===mkt)&&(!statF||(statF==='ok'?d.hasLp:!d.hasLp)));
+  data=sortData(data,'prices',sortState.prices.col,sortState.prices.dir);
+  const el=document.getElementById('priceTable');
+  if(!data.length){el.innerHTML='<div class="empty">No tickers match filters.</div>';return;}
+  el.innerHTML=`<table><thead><tr>${thSort('prices','ticker','Ticker')}${thSort('prices','name','Name')}${thSort('prices','market','Market')}<th>Current price</th><th>Prev close</th><th>Daily Δ</th><th>Daily %</th><th>Currency</th><th>EUR equiv.</th><th>Source</th><th>Updated</th></tr></thead><tbody>`+
+  data.map(d=>{
+    const lp=d.lp;
+    const price=lp?Number(lp.price).toLocaleString('en',{maximumFractionDigits:4}):'—';
+    const prev=lp?Number(lp.prevClose||lp.price).toLocaleString('en',{maximumFractionDigits:4}):'—';
+    const dayAbs=lp?(lp.price-(lp.prevClose||lp.price)):0;
+    const dayPct=lp&&lp.prevClose?((lp.price-lp.prevClose)/lp.prevClose)*100:0;
+    const eurEq=lp?fmtN(toBase(priceToEur(lp.price,lp.currency))):'—';
+    const ts=lp?new Date(lp.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'—';
+    return`<tr><td style="font-family:var(--font-mono);font-weight:500;">${d.ticker}</td><td style="color:var(--text2);font-size:12px;">${d.name}</td><td>${mktBadge(d.market)}</td><td style="font-family:var(--font-mono);font-weight:500;">${price}</td><td style="font-family:var(--font-mono);color:var(--text2);">${prev}</td><td class="${clsPnl(dayAbs)}" style="font-family:var(--font-mono);">${lp?(dayAbs>=0?'+':'')+dayAbs.toFixed(3):'—'}</td><td class="${clsPnl(dayPct)}" style="font-family:var(--font-mono);">${lp?fmtPct(dayPct):'—'}</td><td style="font-family:var(--font-mono);color:var(--text3);">${lp?.currency||'—'}</td><td style="font-family:var(--font-mono);">${eurEq}</td><td>${srcLabel(d.ticker)}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">${ts}</td></tr>`;
+  }).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
-// RENDER TRANSACTIONS
+// TRANSACTIONS
 // ═══════════════════════════════════════
-function renderTxTable() {
-  const q    = gv('txSearch');
-  const type = gv('txTypeFilter');
-  const mkt  = gv('txMktFilter');
-  let data = [...transactions].filter(tx =>
-    matchSearch(tx, q) &&
-    (!type || tx.type === type) &&
-    (!mkt  || (tx.market||'').toLowerCase() === mkt)
-  );
-  data = sortData(data, 'tx', sortState.tx.col, sortState.tx.dir);
-
-  const el = document.getElementById('txTable');
-  if (!data.length) { el.innerHTML='<div class="empty">No transactions match filters.</div>'; return; }
-  el.innerHTML = `<table><thead><tr>
-    ${thSort('tx','date','Date')}
-    ${thSort('tx','ticker','Ticker')}
-    <th>Type</th><th>Market</th>
-    ${thSort('tx','qty','Qty')}
-    ${thSort('tx','price','Price')}
-    ${thSort('tx','amtEur','EUR value')}
-    <th>FX</th><th>Notes</th><th></th>
-  </tr></thead><tbody>` +
-  data.map(tx=>`<tr>
-    <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;">${tx.date}</td>
-    <td style="font-family:var(--font-mono);font-weight:500;">${tx.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${tx.name}</span></td>
-    <td><span class="tag tag-${tx.type}">${tx.type}</span></td>
-    <td>${mktBadge(tx.market)}</td>
-    <td style="font-family:var(--font-mono);">${tx.qty||'—'}</td>
-    <td style="font-family:var(--font-mono);">${Number(tx.price).toLocaleString()} ${tx.currency}</td>
-    <td style="font-family:var(--font-mono);">${tx.amtEur.toFixed(2)}</td>
-    <td style="font-size:11px;font-family:var(--font-mono);">${Number(tx.fx).toFixed(5)} ${tx.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td>
-    <td style="font-size:12px;color:var(--text3);">${tx.notes||''}</td>
-    <td><button class="btn-danger" onclick="deleteTx(${tx.id})">del</button></td>
-  </tr>`).join('') + '</tbody></table>';
+function renderTxTable(){
+  const q=gv('txSearch'),type=gv('txTypeFilter'),mkt=gv('txMktFilter');
+  let data=[...transactions].filter(tx=>matchSearch(tx,q)&&(!type||tx.type===type)&&(!mkt||(tx.market||'').toLowerCase()===mkt));
+  data=sortData(data,'tx',sortState.tx.col,sortState.tx.dir);
+  const el=document.getElementById('txTable');
+  if(!data.length){el.innerHTML='<div class="empty">No transactions match filters.</div>';return;}
+  el.innerHTML=`<table><thead><tr>${thSort('tx','date','Date')}${thSort('tx','ticker','Ticker')}<th>Type</th><th>Market</th>${thSort('tx','qty','Qty')}${thSort('tx','price','Price')}${thSort('tx','amtEur','EUR value')}<th>FX</th><th>Notes</th><th></th></tr></thead><tbody>`+
+  data.map(tx=>`<tr><td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;">${tx.date}</td><td style="font-family:var(--font-mono);font-weight:500;">${tx.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${tx.name}</span></td><td><span class="tag tag-${tx.type}">${tx.type}</span></td><td>${mktBadge(tx.market)}</td><td style="font-family:var(--font-mono);">${tx.qty||'—'}</td><td style="font-family:var(--font-mono);">${Number(tx.price).toLocaleString()} ${tx.currency}</td><td style="font-family:var(--font-mono);">${tx.amtEur.toFixed(2)}</td><td style="font-size:11px;font-family:var(--font-mono);">${Number(tx.fx).toFixed(5)} ${tx.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td><td style="font-size:12px;color:var(--text3);">${tx.notes||''}</td><td><button class="btn-danger" onclick="deleteTx(${tx.id})">del</button></td></tr>`).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════
-function exportCSV() {
-  const rows = [
-    ['market','ticker','name','type','date','qty','price','currency','fx_to_eur','amt_eur','notes'],
-    ...transactions.map(t=>[t.market,t.ticker,`"${t.name}"`,t.type,t.date,t.qty,t.price,t.currency,t.fx,t.amtEur.toFixed(4),`"${t.notes||''}"`])
-  ];
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
-  a.download = 'folio_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+function exportCSV(){
+  const rows=[['market','ticker','name','type','date','qty','price','currency','fx_to_eur','amt_eur','notes'],...transactions.map(t=>[t.market,t.ticker,`"${t.name}"`,t.type,t.date,t.qty,t.price,t.currency,t.fx,t.amtEur.toFixed(4),`"${t.notes||''}"`])];
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download='folio_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 
-function downloadTemplate() {
-  const csv = `market,ticker,name,type,date,qty,price,currency,fx_to_eur,notes
+function downloadTemplate(){
+  const csv=`market,ticker,name,type,date,qty,price,currency,fx_to_eur,notes
 India,RELIANCE.NS,Reliance Industries,buy,2024-01-15,50,2400,INR,,Initial buy
 India,RELIANCE.NS,Reliance Industries,bonus,2024-06-01,5,0,INR,,1:10 bonus
 India,119598,Parag Parikh Flexi Cap,buy,2024-03-10,100,65.50,INR,,MF scheme code
@@ -1380,155 +1120,104 @@ India,SGB,Sovereign Gold Bond,buy,2024-04-01,10,6200,INR,,10 grams
 US,AAPL,Apple Inc.,buy,2024-03-10,10,185,USD,,
 Europe,AIR.DE,Airbus,buy,2024-03-14,27,136.46,EUR,1,
 Crypto,BTC,Bitcoin,buy,2024-01-01,0.05,42000,USD,,`;
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'folio_template.csv'; a.click();
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='folio_template.csv';a.click();
 }
 
-function parseCSVLine(line) {
-  const res=[]; let cur='', inQ=false;
-  for (let i=0; i<line.length; i++) {
-    const c=line[i];
-    if(c==='"'){inQ=!inQ;} else if(c===','&&!inQ){res.push(cur.trim());cur='';} else{cur+=c;}
-  }
-  res.push(cur.trim()); return res;
+function parseCSVLine(line){
+  const res=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){res.push(cur.trim());cur='';}else{cur+=c;}}
+  res.push(cur.trim());return res;
 }
 
-function handleFile(file) { if(!file)return; const r=new FileReader(); r.onload=e=>parseAndPreview(e.target.result); r.readAsText(file); }
-function handleDrop(e)    { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }
-function parsePaste()     { parseAndPreview(document.getElementById('pasteArea').value); }
+function handleFile(file){if(!file)return;const r=new FileReader();r.onload=e=>parseAndPreview(e.target.result);r.readAsText(file);}
+function handleDrop(e){e.preventDefault();handleFile(e.dataTransfer.files[0]);}
+function parsePaste(){parseAndPreview(document.getElementById('pasteArea').value);}
 
-function parseAndPreview(raw) {
-  const lines = raw.trim().split(/\r?\n/).filter(l=>l.trim());
-  if (lines.length<2) { alert('Need a header row and at least one data row.'); return; }
-  const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/['"]/g,'').trim());
-  const idx = k => headers.indexOf(k);
-  const missing = ['market','ticker','type','date','price','currency'].filter(k=>idx(k)===-1);
-  if (missing.length) { alert('Missing columns: '+missing.join(', ')); return; }
-  parsedRows = [];
-  for (let i=1; i<lines.length; i++) {
-    const cols = parseCSVLine(lines[i]);
-    const get  = k => idx(k)>=0&&cols[idx(k)]!==undefined ? cols[idx(k)].replace(/['"]/g,'').trim() : '';
-    const typeRaw = get('type').toLowerCase();
-    let market = get('market');
-    market = market.charAt(0).toUpperCase()+market.slice(1).toLowerCase();
-    if(market==='Us') market='US'; if(market==='Sgb') market='SGB'; if(market==='Mutualfund') market='MutualFund';
-    const row = {
-      market, ticker: get('ticker').toUpperCase(),
-      name: get('name')||get('ticker').toUpperCase(), type: typeRaw,
-      date: get('date'), qty: parseFloat(get('qty').replace(/,/g,''))||0,
-      price: parseFloat(get('price').replace(/,/g,''))||0,
-      currency: (get('currency')||'EUR').toUpperCase(),
-      fx: parseFloat(get('fx_to_eur').replace(/,/g,''))||0,
-      notes: get('notes'), fxAuto: false, fxNeedsLookup: false
-    };
-    const errs = [];
-    if (!['India','US','Europe','Crypto','MutualFund','SGB'].includes(row.market)) errs.push(`invalid market "${row.market}"`);
-    if (!['buy','sell','dividend','bonus'].includes(row.type)) errs.push(`unknown type "${row.type}"`);
-    if (!row.date.match(/^\d{4}-\d{2}-\d{2}$/)) errs.push('date must be YYYY-MM-DD');
-    if (row.type!=='bonus'&&row.type!=='dividend'&&row.price<=0) errs.push('price must be > 0');
-    row.valid = errs.length===0; row.error = errs.join('; ');
-    if (row.type==='bonus') { row.amtEur=0; row.fx=row.fx||1; }
-    else {
-      const amtOrig = row.type==='dividend' ? row.price : row.qty*row.price;
-      if (!row.fx||row.fx===0) { row.fx=FALLBACK_FX[row.currency]||1; row.fxAuto=true; if(row.valid) row.fxNeedsLookup=true; }
-      row.amtEur = amtOrig * row.fx;
-    }
+function parseAndPreview(raw){
+  const lines=raw.trim().split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){alert('Need a header row and at least one data row.');return;}
+  const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/['"]/g,'').trim());
+  const idx=k=>headers.indexOf(k);
+  const missing=['market','ticker','type','date','price','currency'].filter(k=>idx(k)===-1);
+  if(missing.length){alert('Missing columns: '+missing.join(', '));return;}
+  parsedRows=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCSVLine(lines[i]);
+    const get=k=>idx(k)>=0&&cols[idx(k)]!==undefined?cols[idx(k)].replace(/['"]/g,'').trim():'';
+    const typeRaw=get('type').toLowerCase();
+    let market=get('market');
+    market=market.charAt(0).toUpperCase()+market.slice(1).toLowerCase();
+    if(market==='Us')market='US';if(market==='Sgb')market='SGB';if(market==='Mutualfund')market='MutualFund';
+    const row={market,ticker:get('ticker').toUpperCase(),name:get('name')||get('ticker').toUpperCase(),type:typeRaw,date:get('date'),qty:parseFloat(get('qty').replace(/,/g,''))||0,price:parseFloat(get('price').replace(/,/g,''))||0,currency:(get('currency')||'EUR').toUpperCase(),fx:parseFloat(get('fx_to_eur').replace(/,/g,''))||0,notes:get('notes'),fxAuto:false,fxNeedsLookup:false};
+    const errs=[];
+    if(!['India','US','Europe','Crypto','MutualFund','SGB'].includes(row.market))errs.push(`invalid market "${row.market}"`);
+    if(!['buy','sell','dividend','bonus'].includes(row.type))errs.push(`unknown type "${row.type}"`);
+    if(!row.date.match(/^\d{4}-\d{2}-\d{2}$/))errs.push('date must be YYYY-MM-DD');
+    if(row.type!=='bonus'&&row.type!=='dividend'&&row.price<=0)errs.push('price must be > 0');
+    row.valid=errs.length===0;row.error=errs.join('; ');
+    if(row.type==='bonus'){row.amtEur=0;row.fx=row.fx||1;}
+    else{const amtOrig=row.type==='dividend'?row.price:row.qty*row.price;if(!row.fx||row.fx===0){row.fx=FALLBACK_FX[row.currency]||1;row.fxAuto=true;if(row.valid)row.fxNeedsLookup=true;}row.amtEur=amtOrig*row.fx;}
     parsedRows.push(row);
   }
-  showPreview(); fetchMissingFX();
+  showPreview();fetchMissingFX();
 }
 
-async function fetchMissingFX() {
-  const needs = parsedRows.filter(r=>r.valid&&r.fxNeedsLookup);
-  if (!needs.length) return;
-  const prog = document.getElementById('fxProgress');
-  prog.style.display='block'; prog.textContent=`Fetching FX rates for ${needs.length} rows…`;
+async function fetchMissingFX(){
+  const needs=parsedRows.filter(r=>r.valid&&r.fxNeedsLookup);
+  if(!needs.length)return;
+  const prog=document.getElementById('fxProgress');
+  prog.style.display='block';prog.textContent=`Fetching FX rates for ${needs.length} rows…`;
   let done=0;
-  for (const row of needs) {
-    const rate    = await fetchHistoricalFX(row.currency, row.date);
-    const amtOrig = row.type==='dividend' ? row.price : row.qty*row.price;
-    row.fx=rate; row.amtEur=amtOrig*rate; row.fxNeedsLookup=false;
-    prog.textContent=`Fetching FX rates… ${++done}/${needs.length}`;
-  }
-  prog.textContent=`✓ FX rates fetched for ${done} rows`;
-  showPreview();
+  for(const row of needs){const rate=await fetchHistoricalFX(row.currency,row.date);const amtOrig=row.type==='dividend'?row.price:row.qty*row.price;row.fx=rate;row.amtEur=amtOrig*rate;row.fxNeedsLookup=false;prog.textContent=`Fetching FX rates… ${++done}/${needs.length}`;}
+  prog.textContent=`✓ FX rates fetched for ${done} rows`;showPreview();
 }
 
-function showPreview() {
-  const ok = parsedRows.filter(r=>r.valid).length;
-  document.getElementById('parseStatus').innerHTML =
-    `<span class="status-ok">✓ ${ok} valid</span>` +
-    (parsedRows.length-ok>0 ? ` &nbsp;<span class="status-err">✗ ${parsedRows.length-ok} errors</span>` : '');
-  document.getElementById('importBtn').textContent = `Import ${ok} valid rows`;
-  document.getElementById('previewTable').innerHTML =
-    `<thead><tr><th>#</th><th>Ticker</th><th>Type</th><th>Market</th><th>Date</th><th>Qty</th><th>Price</th><th>Ccy</th><th>FX</th><th>EUR</th><th>Status</th></tr></thead><tbody>` +
-    parsedRows.map((r,i)=>`<tr style="${r.valid?'':'opacity:0.4;'}">
-      <td style="font-size:11px;color:var(--text3);">${i+1}</td>
-      <td style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</td>
-      <td><span class="tag tag-${r.type}">${r.type}</span></td>
-      <td>${mktBadge(r.market)}</td>
-      <td style="font-size:12px;font-family:var(--font-mono);">${r.date}</td>
-      <td style="font-family:var(--font-mono);">${r.qty||'—'}</td>
-      <td style="font-family:var(--font-mono);">${r.price}</td>
-      <td style="font-family:var(--font-mono);">${r.currency}</td>
-      <td style="font-size:11px;font-family:var(--font-mono);">${Number(r.fx).toFixed(5)} ${r.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td>
-      <td style="font-family:var(--font-mono);">${r.amtEur.toFixed(2)}</td>
-      <td>${r.valid?'<span class="status-ok">✓</span>':'<span class="status-err">✗ '+r.error+'</span>'}</td>
-    </tr>`).join('') + '</tbody>';
+function showPreview(){
+  const ok=parsedRows.filter(r=>r.valid).length;
+  document.getElementById('parseStatus').innerHTML=`<span class="status-ok">✓ ${ok} valid</span>`+(parsedRows.length-ok>0?` &nbsp;<span class="status-err">✗ ${parsedRows.length-ok} errors</span>`:'');
+  document.getElementById('importBtn').textContent=`Import ${ok} valid rows`;
+  document.getElementById('previewTable').innerHTML=`<thead><tr><th>#</th><th>Ticker</th><th>Type</th><th>Market</th><th>Date</th><th>Qty</th><th>Price</th><th>Ccy</th><th>FX</th><th>EUR</th><th>Status</th></tr></thead><tbody>`+parsedRows.map((r,i)=>`<tr style="${r.valid?'':'opacity:0.4;}"><td style="font-size:11px;color:var(--text3);">${i+1}</td><td style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</td><td><span class="tag tag-${r.type}">${r.type}</span></td><td>${mktBadge(r.market)}</td><td style="font-size:12px;font-family:var(--font-mono);">${r.date}</td><td style="font-family:var(--font-mono);">${r.qty||'—'}</td><td style="font-family:var(--font-mono);">${r.price}</td><td style="font-family:var(--font-mono);">${r.currency}</td><td style="font-size:11px;font-family:var(--font-mono);">${Number(r.fx).toFixed(5)} ${r.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td><td style="font-family:var(--font-mono);">${r.amtEur.toFixed(2)}</td><td>${r.valid?'<span class="status-ok">✓</span>':'<span class="status-err">✗ '+r.error+'</span>'}</td></tr>`).join('')+'</tbody>';
   document.getElementById('parsePreview').style.display='block';
 }
 
-function confirmImport() {
-  const valid = parsedRows.filter(r=>r.valid);
-  valid.forEach(r => transactions.push({
-    id: Date.now()+Math.random(), market:r.market, ticker:r.ticker, name:r.name,
-    type:r.type, date:r.date, qty:r.qty, price:r.price, currency:r.currency,
-    fx:r.fx, amtEur:r.amtEur, notes:r.notes, fxAuto:r.fxAuto
-  }));
-  save();
-  document.getElementById('parsePreview').style.display='none';
-  alert(`Imported ${valid.length} transactions.`);
-  showTab('dashboard');
+function confirmImport(){
+  const valid=parsedRows.filter(r=>r.valid);
+  valid.forEach(r=>transactions.push({id:Date.now()+Math.random(),market:r.market,ticker:r.ticker,name:r.name,type:r.type,date:r.date,qty:r.qty,price:r.price,currency:r.currency,fx:r.fx,amtEur:r.amtEur,notes:r.notes,fxAuto:r.fxAuto}));
+  save();document.getElementById('parsePreview').style.display='none';alert(`Imported ${valid.length} transactions.`);showTab('dashboard');
 }
 
 // ═══════════════════════════════════════
 // SAMPLE DATA
 // ═══════════════════════════════════════
-function loadSample() {
-  if (transactions.length>0 && !confirm('Replace current data with sample data?')) return;
-  transactions = [
+function loadSample(){
+  if(transactions.length>0&&!confirm('Replace current data with sample data?'))return;
+  transactions=[
     {id:1001,market:'India',ticker:'NIFTYBEES.NS',name:'Nifty BeES',type:'buy',date:'2025-01-09',qty:100,price:263.53,currency:'INR',fx:0.01097,amtEur:289.04,notes:'',fxAuto:true},
-    {id:1002,market:'India',ticker:'NIFTYBEES.NS',name:'Nifty BeES',type:'buy',date:'2025-01-13',qty:100,price:259.05,currency:'INR',fx:0.01097,amtEur:284.12,notes:'',fxAuto:true},
-    {id:1003,market:'India',ticker:'TMPV.NS',name:'TMPV',type:'buy',date:'2024-11-08',qty:30,price:634,currency:'INR',fx:0.01115,amtEur:212.25,notes:'',fxAuto:true},
-    {id:1004,market:'India',ticker:'TMPV.NS',name:'TMPV',type:'buy',date:'2025-01-09',qty:40,price:608.85,currency:'INR',fx:0.01097,amtEur:267.10,notes:'',fxAuto:true},
-    {id:1005,market:'India',ticker:'OLAELEC.NS',name:'Ola Electric',type:'buy',date:'2024-10-23',qty:300,price:81.87,currency:'INR',fx:0.01117,amtEur:274.46,notes:'',fxAuto:true},
-    {id:1006,market:'India',ticker:'TATAPOWER.NS',name:'Tata Power',type:'buy',date:'2025-01-13',qty:60,price:352.05,currency:'INR',fx:0.01097,amtEur:231.74,notes:'',fxAuto:true},
-    {id:1007,market:'India',ticker:'RELIANCE.NS',name:'Reliance Industries',type:'bonus',date:'2024-10-23',qty:30,price:0,currency:'INR',fx:0.011,amtEur:0,notes:'Bonus shares',fxAuto:false},
-    {id:1008,market:'India',ticker:'INFY.NS',name:'Infosys',type:'dividend',date:'2024-10-29',qty:0,price:1470,currency:'INR',fx:0.01117,amtEur:16.42,notes:'',fxAuto:true},
-    {id:1009,market:'MutualFund',ticker:'119598',name:'Parag Parikh Flexi Cap',type:'buy',date:'2024-03-10',qty:200,price:65.50,currency:'INR',fx:0.01112,amtEur:145.77,notes:'',fxAuto:true},
-    {id:1010,market:'SGB',ticker:'SGBSEP29VI-GB',name:'SGB Sep 2029 VI',type:'buy',date:'2024-04-01',qty:10,price:6200,currency:'INR',fx:0.01105,amtEur:685.10,notes:'10 grams',fxAuto:true},
-    {id:1011,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'buy',date:'2024-03-14',qty:27,price:136.46,currency:'EUR',fx:1,amtEur:3684.42,notes:'',fxAuto:false},
-    {id:1012,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'buy',date:'2025-03-14',qty:70,price:220.00,currency:'EUR',fx:1,amtEur:15400,notes:'',fxAuto:false},
-    {id:1013,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'dividend',date:'2024-03-20',qty:0,price:64.26,currency:'EUR',fx:1,amtEur:64.26,notes:'',fxAuto:false},
-    {id:1014,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'dividend',date:'2025-03-20',qty:0,price:132.60,currency:'EUR',fx:1,amtEur:132.60,notes:'',fxAuto:false},
-    {id:1015,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-01-13',qty:10,price:220.00,currency:'USD',fx:0.9725,amtEur:2139.50,notes:'',fxAuto:true},
-    {id:1016,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-02-07',qty:5,price:310.00,currency:'USD',fx:0.9706,amtEur:1504.43,notes:'',fxAuto:true},
-    {id:1017,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-01-14',qty:11,price:85.00,currency:'USD',fx:0.9725,amtEur:910.49,notes:'',fxAuto:true},
-    {id:1018,market:'Crypto',ticker:'BTC',name:'Bitcoin',type:'buy',date:'2024-01-01',qty:0.05,price:42000,currency:'USD',fx:0.92,amtEur:1932,notes:'',fxAuto:false},
-    {id:1019,market:'Crypto',ticker:'ETH',name:'Ethereum',type:'buy',date:'2024-02-01',qty:0.5,price:2200,currency:'USD',fx:0.92,amtEur:1012,notes:'',fxAuto:false},
+    {id:1002,market:'India',ticker:'TMPV.NS',name:'TMPV',type:'buy',date:'2024-11-08',qty:70,price:620,currency:'INR',fx:0.01106,amtEur:479.0,notes:'',fxAuto:true},
+    {id:1003,market:'India',ticker:'OLAELEC.NS',name:'Ola Electric',type:'buy',date:'2024-10-23',qty:300,price:81.87,currency:'INR',fx:0.01117,amtEur:274.46,notes:'',fxAuto:true},
+    {id:1004,market:'India',ticker:'TATAPOWER.NS',name:'Tata Power',type:'buy',date:'2025-01-13',qty:60,price:352.05,currency:'INR',fx:0.01097,amtEur:231.74,notes:'',fxAuto:true},
+    {id:1005,market:'India',ticker:'RELIANCE.NS',name:'Reliance Industries',type:'bonus',date:'2024-10-23',qty:30,price:0,currency:'INR',fx:0.011,amtEur:0,notes:'Bonus shares',fxAuto:false},
+    {id:1006,market:'India',ticker:'INFY.NS',name:'Infosys',type:'dividend',date:'2024-10-29',qty:0,price:1470,currency:'INR',fx:0.01117,amtEur:16.42,notes:'',fxAuto:true},
+    {id:1007,market:'MutualFund',ticker:'119598',name:'Parag Parikh Flexi Cap',type:'buy',date:'2024-03-10',qty:200,price:65.50,currency:'INR',fx:0.01112,amtEur:145.77,notes:'',fxAuto:true},
+    {id:1008,market:'SGB',ticker:'SGBSEP29VI-GB',name:'SGB Sep 2029 VI',type:'buy',date:'2024-04-01',qty:10,price:6200,currency:'INR',fx:0.01105,amtEur:685.10,notes:'10 grams',fxAuto:true},
+    {id:1009,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'buy',date:'2024-03-14',qty:97,price:155,currency:'EUR',fx:1,amtEur:15035,notes:'',fxAuto:false},
+    {id:1010,market:'Europe',ticker:'AIR.DE',name:'Airbus SE',type:'dividend',date:'2024-03-20',qty:0,price:64.26,currency:'EUR',fx:1,amtEur:64.26,notes:'',fxAuto:false},
+    {id:1011,market:'US',ticker:'AMZN',name:'Amazon',type:'buy',date:'2026-01-13',qty:10,price:220,currency:'USD',fx:0.9725,amtEur:2139.5,notes:'',fxAuto:true},
+    {id:1012,market:'US',ticker:'GOOGL',name:'Alphabet',type:'buy',date:'2026-02-07',qty:5,price:310,currency:'USD',fx:0.9706,amtEur:1504.43,notes:'',fxAuto:true},
+    {id:1013,market:'US',ticker:'NFLX',name:'Netflix',type:'buy',date:'2026-01-14',qty:11,price:85,currency:'USD',fx:0.9725,amtEur:910.49,notes:'',fxAuto:true},
+    {id:1014,market:'Crypto',ticker:'BTC',name:'Bitcoin',type:'buy',date:'2024-01-01',qty:0.05,price:42000,currency:'USD',fx:0.92,amtEur:1932,notes:'',fxAuto:false},
+    {id:1015,market:'Crypto',ticker:'ETH',name:'Ethereum',type:'buy',date:'2024-02-01',qty:0.5,price:2200,currency:'USD',fx:0.92,amtEur:1012,notes:'',fxAuto:false},
   ];
-  save(); livePrices={}; savePrices();
-  showTab('dashboard');
+  save();livePrices={};savePrices();showTab('dashboard');
 }
 
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
-document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
+document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
 renderDashboard();
 startAutoRefresh();
-setTimeout(() => { if (computeHoldings().length > 0) fetchAllPrices(false); }, 800);
+setTimeout(()=>{if(computeHoldings().length>0)fetchAllPrices(false);},800);
 </script>
 </body>
 </html>
