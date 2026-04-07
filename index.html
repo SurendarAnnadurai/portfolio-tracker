@@ -147,6 +147,25 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .bm-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:80px;}
 .bm-bar-label{font-size:11px;color:var(--text2);font-family:var(--font-mono);text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bm-bar-val{font-size:12px;font-weight:500;font-family:var(--font-mono);}
+
+/* Sticky filter bar */
+.sticky-filter{position:sticky;top:0;z-index:10;background:var(--bg2);padding-bottom:10px;margin-bottom:0;}
+/* Sticky table headers */
+.table-wrap{overflow-x:auto;max-height:70vh;overflow-y:auto;}
+.table-wrap table thead tr th{position:sticky;top:0;z-index:5;background:var(--bg2);box-shadow:0 1px 0 var(--border);}
+/* FX toggle switch */
+.fx-switch-wrap{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+.fx-switch{position:relative;width:42px;height:22px;cursor:pointer;}
+.fx-switch input{opacity:0;width:0;height:0;}
+.fx-switch-slider{position:absolute;inset:0;background:var(--bg4);border-radius:11px;transition:0.2s;border:1px solid var(--border2);}
+.fx-switch-slider:before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--text3);border-radius:50%;transition:0.2s;}
+.fx-switch input:checked + .fx-switch-slider{background:rgba(200,240,96,0.2);border-color:var(--accent);}
+.fx-switch input:checked + .fx-switch-slider:before{transform:translateX(20px);background:var(--accent);}
+.fx-label-active{color:var(--accent);}
+/* Smart ticker resolve badges */
+.resolve-auto{background:rgba(200,240,96,0.12);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--font-mono);}
+.resolve-review{background:rgba(232,201,106,0.12);color:var(--gold);font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--font-mono);}
+.resolve-input{padding:3px 7px;border-radius:var(--r);border:1px solid var(--gold);background:var(--bg3);color:var(--text);font-family:var(--font-mono);font-size:11px;width:130px;}
 </style>
 </head>
 <body>
@@ -235,7 +254,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         </div>
         <div class="card">
           <div class="card-title">Per holding breakdown</div>
-          <div class="filter-bar">
+          <div class="filter-bar sticky-filter">
             <input class="filter-search" id="dailySearch" placeholder="Search ticker or name…" oninput="renderDailyPnL()"/>
             <select class="filter-select" id="dailyMktFilter" onchange="renderDailyPnL()">
               <option value="">All markets</option>
@@ -243,6 +262,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
               <option>Crypto</option><option>MutualFund</option><option>SGB</option>
             </select>
             <button class="filter-clear" onclick="clearFilters('daily')">Clear</button>
+            <div class="fx-switch-wrap" style="margin-left:auto;">
+              <span id="fxLabelHistorical2">Historical FX</span>
+              <label class="fx-switch">
+                <input type="checkbox" id="fxToggle2" checked onchange="onFxToggle()"/>
+                <span class="fx-switch-slider"></span>
+              </label>
+              <span id="fxLabelLive2" class="fx-label-active">Live FX</span>
+            </div>
           </div>
           <div class="table-wrap" id="dailyTable"></div>
         </div>
@@ -253,7 +280,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <h1 class="page-title">Holdings</h1>
         <p class="page-sub">All open positions</p>
         <div class="card">
-          <div class="filter-bar">
+          <div class="filter-bar sticky-filter">
             <input class="filter-search" id="holdingsSearch" placeholder="Search ticker or name…" oninput="renderHoldingsTable()"/>
             <select class="filter-select" id="holdingsMktFilter" onchange="renderHoldingsTable()">
               <option value="">All markets</option>
@@ -264,6 +291,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
               <option value="">All P&L</option><option value="pos">Gainers</option><option value="neg">Losers</option>
             </select>
             <button class="filter-clear" onclick="clearFilters('holdings')">Clear</button>
+            <div class="fx-switch-wrap" style="margin-left:auto;">
+              <span id="fxLabelHistorical" style="">Historical FX</span>
+              <label class="fx-switch">
+                <input type="checkbox" id="fxToggle" checked onchange="onFxToggle()"/>
+                <span class="fx-switch-slider"></span>
+              </label>
+              <span id="fxLabelLive" class="fx-label-active">Live FX</span>
+            </div>
           </div>
           <div class="table-wrap" id="holdingsTable"></div>
         </div>
@@ -275,7 +310,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         <p class="page-sub">Full ledger</p>
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-            <div class="filter-bar" style="margin:0;flex:1;">
+            <div class="filter-bar sticky-filter" style="margin:0;flex:1;">
               <input class="filter-search" id="txSearch" placeholder="Search ticker or name…" oninput="renderTxTable()"/>
               <select class="filter-select" id="txTypeFilter" onchange="renderTxTable()">
                 <option value="">All types</option>
@@ -448,7 +483,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
         </div>
         <p class="page-sub">Auto-refreshes every 1 minute · Via Vercel serverless proxy</p>
         <div class="card">
-          <div class="filter-bar">
+          <div class="filter-bar sticky-filter">
             <input class="filter-search" id="priceSearch" placeholder="Search ticker or name…" oninput="renderPriceTable()"/>
             <select class="filter-select" id="priceMktFilter" onchange="renderPriceTable()">
               <option value="">All markets</option>
@@ -731,6 +766,7 @@ async function fetchAllPrices(manual=false) {
 
   await Promise.allSettled([goldPromise,...yahooPromises,cryptoPromise,...amfiPromises]);
   savePrices(); save();
+  fetchLiveFxRates();
   isFetching=false;
   const now=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   setRefreshStatus(`${done} ok${failed?', '+failed+' ✗':''} · ${now}`, true);
@@ -835,9 +871,19 @@ function computeHoldings() {
   const map={};
   [...transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(tx=>{
     const k=tx.ticker;
-    if(!map[k]) map[k]={ticker:k,name:tx.name,market:tx.market,currency:tx.currency,buyQty:0,sellQty:0,bonusQty:0,totalBuyCostEur:0,dividendsEur:0};
+    if(!map[k]) map[k]={ticker:k,name:tx.name,market:tx.market,currency:tx.currency,
+      buyQty:0,sellQty:0,bonusQty:0,totalBuyCostEur:0,dividendsEur:0,
+      totalBuyCostOrig:0, weightedFx:0, buyCount:0};
     const h=map[k];
-    if(tx.type==='buy'){h.buyQty+=tx.qty;h.totalBuyCostEur+=tx.amtEur;}
+    if(tx.type==='buy'){
+      h.buyQty+=tx.qty;
+      h.totalBuyCostEur+=tx.amtEur;
+      // Track weighted average historical FX rate
+      const origAmt = tx.qty * tx.price;
+      h.totalBuyCostOrig += origAmt;
+      h.weightedFx += (tx.fx || FALLBACK_FX[tx.currency] || 1) * origAmt;
+      h.buyCount++;
+    }
     else if(tx.type==='sell'){h.sellQty+=tx.qty;}
     else if(tx.type==='bonus'){h.bonusQty+=tx.qty;}
     else if(tx.type==='dividend'){h.dividendsEur+=tx.amtEur;}
@@ -848,22 +894,51 @@ function computeHoldings() {
     const netQty=h.buyQty-h.sellQty+h.bonusQty;
     if(netQty<0.0001) return null;
     const soldFrac=h.buyQty>0?h.sellQty/h.buyQty:0;
-    const remainCostEur=h.totalBuyCostEur*(1-soldFrac);
-    const avgCostEur=netQty>0?remainCostEur/netQty:0;
-    const lp=livePrices[h.ticker];
-    let currentPriceEur=avgCostEur, prevPriceEur=avgCostEur, hasLive=false;
-    if(lp&&lp.price>0){
-      currentPriceEur=priceToEur(lp.price,lp.currency);
-      prevPriceEur=priceToEur(lp.prevClose||lp.price,lp.currency);
-      hasLive=true;
+
+    // Historical weighted-average FX rate at purchase time
+    const avgHistFx = h.totalBuyCostOrig > 0 ? h.weightedFx / h.totalBuyCostOrig : FALLBACK_FX[h.currency]||1;
+    // Live FX rate for this currency
+    const liveFx = liveFxRates[h.currency] || FALLBACK_FX[h.currency] || 1;
+    // Active FX rate based on mode
+    const activeFx = fxMode === 'historical' ? avgHistFx : liveFx;
+
+    // Cost basis in EUR — always use historical FX (that's what was paid)
+    const remainCostEur = h.totalBuyCostEur * (1 - soldFrac);
+    const avgCostEur = netQty > 0 ? remainCostEur / netQty : 0;
+
+    // Current price — use live price converted with active FX
+    const lp = livePrices[h.ticker];
+    let currentPriceInOrigCcy = null, prevPriceInOrigCcy = null, hasLive = false;
+    if(lp && lp.price > 0){
+      currentPriceInOrigCcy = lp.price;
+      prevPriceInOrigCcy = lp.prevClose || lp.price;
+      hasLive = true;
     }
-    const currentValueEur=currentPriceEur*netQty;
-    const prevValueEur=prevPriceEur*netQty;
-    const pnlVsCostEur=currentValueEur-remainCostEur;
-    const pnlVsCostPct=remainCostEur>0?(pnlVsCostEur/remainCostEur)*100:0;
-    const dailyPnlEur=hasLive?currentValueEur-prevValueEur:0;
-    const dailyPnlPct=hasLive&&prevValueEur>0?(dailyPnlEur/prevValueEur)*100:0;
-    return {ticker:h.ticker,name:h.name,market:h.market,currency:h.currency,qty:netQty,bonusQty:h.bonusQty,avgCostEur,remainCostEur,currentPriceEur,prevPriceEur,currentValueEur,prevValueEur,hasLive,pnlVsCostEur,pnlVsCostPct,dailyPnlEur,dailyPnlPct,dividendsEur:h.dividendsEur,divYield:remainCostEur>0?(h.dividendsEur/remainCostEur)*100:0};
+
+    // Convert to EUR using active FX mode
+    const currentPriceEur = hasLive ? currentPriceInOrigCcy * activeFx : avgCostEur;
+    const prevPriceEur    = hasLive ? prevPriceInOrigCcy    * activeFx : avgCostEur;
+
+    const currentValueEur = currentPriceEur * netQty;
+    const prevValueEur    = prevPriceEur    * netQty;
+    const pnlVsCostEur    = currentValueEur - remainCostEur;
+    const pnlVsCostPct    = remainCostEur>0?(pnlVsCostEur/remainCostEur)*100:0;
+    const dailyPnlEur     = hasLive ? currentValueEur - prevValueEur : 0;
+    const dailyPnlPct     = hasLive && prevValueEur>0 ? (dailyPnlEur/prevValueEur)*100 : 0;
+
+    // Currency depreciation/appreciation vs purchase date
+    const fxChangePct = avgHistFx > 0 ? ((liveFx - avgHistFx) / avgHistFx) * 100 : 0;
+
+    return {
+      ticker:h.ticker, name:h.name, market:h.market, currency:h.currency,
+      qty:netQty, bonusQty:h.bonusQty,
+      avgCostEur, remainCostEur,
+      avgHistFx, liveFx, activeFx, fxChangePct,
+      currentPriceEur, prevPriceEur, currentValueEur, prevValueEur,
+      hasLive, pnlVsCostEur, pnlVsCostPct, dailyPnlEur, dailyPnlPct,
+      dividendsEur:h.dividendsEur,
+      divYield:remainCostEur>0?(h.dividendsEur/remainCostEur)*100:0
+    };
   }).filter(Boolean);
 }
 
@@ -905,6 +980,33 @@ function sortData(data,key,col,dir){
     if(typeof av==='string') return dir*av.localeCompare(bv);
     return dir*(av-bv);
   });
+}
+
+
+function onFxToggle() {
+  // Sync both toggles
+  const v1 = document.getElementById('fxToggle')?.checked;
+  const v2 = document.getElementById('fxToggle2')?.checked;
+  // Use whichever was just changed
+  const checked = v1 !== undefined ? v1 : v2;
+  if (document.getElementById('fxToggle'))  document.getElementById('fxToggle').checked  = checked;
+  if (document.getElementById('fxToggle2')) document.getElementById('fxToggle2').checked = checked;
+
+  fxMode = checked ? 'live' : 'historical';
+
+  // Update labels
+  ['','2'].forEach(sfx => {
+    const h = document.getElementById('fxLabelHistorical'+sfx);
+    const l = document.getElementById('fxLabelLive'+sfx);
+    if (h) h.className = fxMode === 'historical' ? 'fx-label-active' : '';
+    if (l) l.className = fxMode === 'live'       ? 'fx-label-active' : '';
+  });
+
+  // Re-render active tables
+  const active = document.querySelector('.section.active')?.id;
+  if (active === 'holdings')     renderHoldingsTable();
+  if (active === 'daily')        renderDailyPnL();
+  if (active === 'dashboard')    renderDashboard();
 }
 
 function onSort(key,col){
@@ -1116,8 +1218,39 @@ function renderHoldingsTable(){
   data=sortData(data,'holdings',sortState.holdings.col,sortState.holdings.dir);
   const el=document.getElementById('holdingsTable');
   if(!data.length){el.innerHTML='<div class="empty">No holdings match filters.</div>';return;}
-  el.innerHTML=`<table><thead><tr>${thSort('holdings','ticker','Ticker')}${thSort('holdings','market','Market')}${thSort('holdings','qty','Qty')}<th>Bonus</th>${thSort('holdings','avgCostEur','Avg cost')}${thSort('holdings','currentPriceEur','Price')}${thSort('holdings','currentValueEur','Value')}${thSort('holdings','pnlVsCostEur','P&L')}${thSort('holdings','pnlVsCostPct','P&L %')}${thSort('holdings','dailyPnlEur','Daily P&L')}${thSort('holdings','dailyPnlPct','Daily %')}${thSort('holdings','dividendsEur','Dividends')}${thSort('holdings','divYield','Div yield')}</tr></thead><tbody>`+
-  data.map(h=>`<tr><td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td><td>${mktBadge(h.market)}</td><td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td><td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty>0?'+'+h.bonusQty:'—'}</td><td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))}<span style="font-size:10px;color:var(--text3);"> /unit</span></td><td style="font-family:var(--font-mono);">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td><td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td><td class="${clsPnl(h.pnlVsCostEur)}" style="font-family:var(--font-mono);">${fmtSign(toBase(h.pnlVsCostEur))}</td><td class="${clsPnl(h.pnlVsCostPct)}" style="font-family:var(--font-mono);">${fmtPct(h.pnlVsCostPct)}</td><td class="${clsPnl(h.dailyPnlEur)}" style="font-family:var(--font-mono);">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td><td class="${clsPnl(h.dailyPnlPct)}" style="font-family:var(--font-mono);">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td><td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td><td class="${h.divYield>0?'pos':''}" style="font-family:var(--font-mono);">${h.divYield.toFixed(2)}%</td></tr>`).join('')+'</tbody></table>';
+  const fxModeLabel = fxMode === 'live' ? 'Live FX' : 'Hist FX';
+  el.innerHTML=`<table><thead><tr>
+    ${thSort('holdings','ticker','Ticker')}
+    ${thSort('holdings','market','Market')}
+    ${thSort('holdings','qty','Qty')}
+    <th>Bonus</th>
+    ${thSort('holdings','avgCostEur','Avg cost')}
+    ${thSort('holdings','currentPriceEur','Price')}
+    ${thSort('holdings','currentValueEur','Value (${fxModeLabel})')}
+    ${thSort('holdings','pnlVsCostEur','P&L')}
+    ${thSort('holdings','pnlVsCostPct','P&L %')}
+    ${thSort('holdings','dailyPnlEur','Daily P&L')}
+    ${thSort('holdings','dailyPnlPct','Daily %')}
+    ${thSort('holdings','fxChangePct','FX Δ')}
+    ${thSort('holdings','dividendsEur','Dividends')}
+    ${thSort('holdings','divYield','Div yield')}
+  </tr></thead><tbody>`+
+  data.map(h=>`<tr>
+    <td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td>
+    <td>${mktBadge(h.market)}</td>
+    <td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td>
+    <td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty>0?'+'+h.bonusQty:'—'}</td>
+    <td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))}<span style="font-size:10px;color:var(--text3);"> /unit</span></td>
+    <td style="font-family:var(--font-mono);">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td>
+    <td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td>
+    <td class="${clsPnl(h.pnlVsCostEur)}" style="font-family:var(--font-mono);">${fmtSign(toBase(h.pnlVsCostEur))}</td>
+    <td class="${clsPnl(h.pnlVsCostPct)}" style="font-family:var(--font-mono);">${fmtPct(h.pnlVsCostPct)}</td>
+    <td class="${clsPnl(h.dailyPnlEur)}" style="font-family:var(--font-mono);">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td>
+    <td class="${clsPnl(h.dailyPnlPct)}" style="font-family:var(--font-mono);">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td>
+    <td class="${clsPnl(h.fxChangePct)}" style="font-family:var(--font-mono);" title="${h.currency} at purchase: ${h.avgHistFx.toFixed(6)} → live: ${h.liveFx.toFixed(6)}">${h.currency==='EUR'?'—':fmtPct(h.fxChangePct)}</td>
+    <td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td>
+    <td class="${h.divYield>0?'pos':''}" style="font-family:var(--font-mono);">${h.divYield.toFixed(2)}%</td>
+  </tr>`).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
@@ -1216,9 +1349,18 @@ function parseAndPreview(raw){
     row.valid=errs.length===0;row.error=errs.join('; ');
     if(row.type==='bonus'){row.amtEur=0;row.fx=row.fx||1;}
     else{const amtOrig=row.type==='dividend'?row.price:row.qty*row.price;if(!row.fx||row.fx===0){row.fx=FALLBACK_FX[row.currency]||1;row.fxAuto=true;if(row.valid)row.fxNeedsLookup=true;}row.amtEur=amtOrig*row.fx;}
+    // Detect if ticker needs smart resolution
+    // Needs resolve if: contains spaces (company name), or is Google Finance format not yet converted
+    const t = row.ticker;
+    const looksLikeName = t.includes(' ') || (t.length > 3 && !t.includes('.') && !t.includes('^') && !/^[A-Z]{1,5}$/.test(t) && !/^\d{6}$/.test(t) && !CRYPTO_IDS[t] && !t.endsWith('-GB') && !t.startsWith('SGB'));
+    row.needsResolve = row.valid && looksLikeName;
+    row.resolveStatus = row.needsResolve ? 'pending' : 'ok';
+
     parsedRows.push(row);
   }
-  showPreview();fetchMissingFX();
+  showPreview();
+  fetchMissingFX();
+  resolveTickersInBackground();
 }
 
 async function fetchMissingFX(){
@@ -1235,14 +1377,108 @@ function showPreview(){
   const ok=parsedRows.filter(r=>r.valid).length;
   document.getElementById('parseStatus').innerHTML=`<span class="status-ok">✓ ${ok} valid</span>`+(parsedRows.length-ok>0?` &nbsp;<span class="status-err">✗ ${parsedRows.length-ok} errors</span>`:'');
   document.getElementById('importBtn').textContent=`Import ${ok} valid rows`;
-  document.getElementById('previewTable').innerHTML=`<thead><tr><th>#</th><th>Ticker</th><th>Type</th><th>Market</th><th>Date</th><th>Qty</th><th>Price</th><th>Ccy</th><th>FX</th><th>EUR</th><th>Status</th></tr></thead><tbody>`+parsedRows.map((r,i)=>`<tr style="${r.valid?'':'opacity:0.4;'}"><td style="font-size:11px;color:var(--text3);">${i+1}</td><td style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</td><td><span class="tag tag-${r.type}">${r.type}</span></td><td>${mktBadge(r.market)}</td><td style="font-size:12px;font-family:var(--font-mono);">${r.date}</td><td style="font-family:var(--font-mono);">${r.qty||'—'}</td><td style="font-family:var(--font-mono);">${r.price}</td><td style="font-family:var(--font-mono);">${r.currency}</td><td style="font-size:11px;font-family:var(--font-mono);">${Number(r.fx).toFixed(5)} ${r.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td><td style="font-family:var(--font-mono);">${r.amtEur.toFixed(2)}</td><td>${r.valid?'<span class="status-ok">✓</span>':'<span class="status-err">✗ '+r.error+'</span>'}</td></tr>`).join('')+'</tbody>';
+  const reviewing = parsedRows.filter(r=>r.resolveStatus==='review').length;
+  const autoResolved = parsedRows.filter(r=>r.resolveStatus==='auto').length;
+  let resolveNote = '';
+  if (autoResolved) resolveNote += ` &nbsp;<span class="resolve-auto">✓ ${autoResolved} auto-resolved</span>`;
+  if (reviewing)    resolveNote += ` &nbsp;<span class="resolve-review">⚠ ${reviewing} need review</span>`;
+
+  document.getElementById('parseStatus').innerHTML =
+    `<span class="status-ok">✓ ${ok} valid</span>` +
+    (parsedRows.length-ok>0 ? ` &nbsp;<span class="status-err">✗ ${parsedRows.length-ok} errors</span>` : '') +
+    resolveNote;
+
+  document.getElementById('previewTable').innerHTML =
+    `<thead><tr><th>#</th><th>Ticker</th><th>Name</th><th>Type</th><th>Market</th><th>Date</th><th>Qty</th><th>Price</th><th>Ccy</th><th>FX</th><th>EUR</th><th>Status</th></tr></thead><tbody>` +
+    parsedRows.map((r,i) => {
+      const tickerCell = r.resolveStatus === 'review'
+        ? `<span style="font-family:var(--font-mono);color:var(--gold);">${r.ticker}</span><br>
+           <input class="resolve-input" data-idx="${i}" placeholder="Enter correct Yahoo ticker" value="${r.resolveOptions?r.resolveOptions[0].symbol:r.ticker}" title="${r.resolveOptions?r.resolveOptions.map(q=>q.symbol+' — '+q.shortname).join(' | '):''}"/>`
+        : r.resolveStatus === 'auto'
+          ? `<span style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</span> <span class="resolve-auto">auto</span>`
+          : `<span style="font-family:var(--font-mono);font-weight:500;">${r.ticker}</span>`;
+      const statusCell = r.resolveStatus === 'pending'
+        ? '<span class="spinner"></span>'
+        : r.resolveStatus === 'review'
+          ? `<span class="resolve-review">⚠ review</span>`
+          : r.resolveStatus === 'auto'
+            ? '<span class="resolve-auto">✓ auto</span>'
+            : r.valid ? '<span class="status-ok">✓</span>' : `<span class="status-err">✗ ${r.error}</span>`;
+      return `<tr style="${r.valid?'':'opacity:0.4;'}">
+        <td style="font-size:11px;color:var(--text3);">${i+1}</td>
+        <td>${tickerCell}</td>
+        <td style="font-size:12px;color:var(--text2);">${r.name}</td>
+        <td><span class="tag tag-${r.type}">${r.type}</span></td>
+        <td>${mktBadge(r.market)}</td>
+        <td style="font-size:12px;font-family:var(--font-mono);">${r.date}</td>
+        <td style="font-family:var(--font-mono);">${r.qty||'—'}</td>
+        <td style="font-family:var(--font-mono);">${r.price}</td>
+        <td style="font-family:var(--font-mono);">${r.currency}</td>
+        <td style="font-size:11px;font-family:var(--font-mono);">${Number(r.fx).toFixed(5)} ${r.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td>
+        <td style="font-family:var(--font-mono);">${r.amtEur.toFixed(2)}</td>
+        <td>${statusCell}</td>
+      </tr>`;
+    }).join('') + '</tbody>';
   document.getElementById('parsePreview').style.display='block';
 }
 
-function confirmImport(){
-  const valid=parsedRows.filter(r=>r.valid);
-  valid.forEach(r=>transactions.push({id:Date.now()+Math.random(),market:r.market,ticker:r.ticker,name:r.name,type:r.type,date:r.date,qty:r.qty,price:r.price,currency:r.currency,fx:r.fx,amtEur:r.amtEur,notes:r.notes,fxAuto:r.fxAuto}));
-  save();document.getElementById('parsePreview').style.display='none';alert(`Imported ${valid.length} transactions.`);showTab('dashboard');
+function confirmImport() {
+  // Apply any manual ticker corrections from review inputs
+  document.querySelectorAll('.resolve-input').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    if (!isNaN(idx) && parsedRows[idx] && inp.value.trim()) {
+      parsedRows[idx].ticker = inp.value.trim().toUpperCase();
+      parsedRows[idx].resolveStatus = 'manual';
+    }
+  });
+  const valid = parsedRows.filter(r => r.valid);
+  valid.forEach(r => transactions.push({
+    id: Date.now()+Math.random(), market:r.market, ticker:r.ticker,
+    name:r.name, type:r.type, date:r.date, qty:r.qty, price:r.price,
+    currency:r.currency, fx:r.fx, amtEur:r.amtEur, notes:r.notes, fxAuto:r.fxAuto
+  }));
+  save();
+  document.getElementById('parsePreview').style.display = 'none';
+  alert(`Imported ${valid.length} transactions.`);
+  showTab('dashboard');
+}
+
+async function resolveTickersInBackground() {
+  const needs = parsedRows.filter(r => r.valid && r.needsResolve);
+  if (!needs.length) return;
+  const prog = document.getElementById('fxProgress');
+  prog.style.display = 'block';
+  prog.textContent = `Resolving ${needs.length} tickers via Yahoo Finance…`;
+  let resolved = 0;
+  const exchMatch = {
+    India:['NSI','BSE','NSE'], US:['NMS','NYQ','NGM','PCX','NCM'],
+    Europe:['GER','FRA','AMS','LSE','PAR','EBS'], Crypto:['CCC']
+  };
+  for (const row of needs) {
+    try {
+      const r = await fetch('/api/search?q=' + encodeURIComponent(row.ticker));
+      if (!r.ok) { row.resolveStatus='review'; continue; }
+      const d = await r.json();
+      const quotes = (d.quotes||[]).filter(q => q.symbol && q.quoteType !== 'OPTION');
+      if (!quotes.length) { row.resolveStatus='review'; continue; }
+      const top = quotes[0];
+      const validExch = exchMatch[row.market] || [];
+      const isHighConf = top.symbol.toUpperCase() === row.ticker.toUpperCase()
+                      || validExch.includes(top.exchange)
+                      || quotes.length === 1;
+      if (isHighConf) {
+        row.ticker = top.symbol;
+        row.name   = top.shortname || top.longname || row.name;
+        row.resolveStatus = 'auto';
+        resolved++;
+      } else {
+        row.resolveOptions = quotes.slice(0,4);
+        row.resolveStatus  = 'review';
+      }
+    } catch(e) { row.resolveStatus = 'review'; }
+  }
+  prog.textContent = `✓ ${resolved} auto-resolved · ${needs.length-resolved} flagged for review`;
+  showPreview();
 }
 
 // ═══════════════════════════════════════
@@ -1274,6 +1510,37 @@ function loadSample(){
 // ═══════════════════════════════════════
 // BENCHMARK
 // ═══════════════════════════════════════
+let fxMode = 'live'; // 'live' = today's rate, 'historical' = purchase-date rate
+let liveFxRates = {}; // { 'USD': 0.918, 'INR': 0.01089, 'GBP': 1.163 } — fetched fresh
+
+async function fetchLiveFxRates() {
+  // Fetch current rates for all currencies we use
+  const currencies = ['USD','INR','GBP'];
+  await Promise.allSettled(currencies.map(async cur => {
+    try {
+      const r = await fetch(`https://api.frankfurter.app/latest?from=${cur}&to=EUR`);
+      const d = await r.json();
+      if (d.rates?.EUR) liveFxRates[cur] = d.rates.EUR;
+    } catch(e) {}
+  }));
+  liveFxRates['EUR'] = 1;
+}
+
+// Get EUR value of an amount — respects fxMode
+// historicalFx = the fx rate stored at purchase time (from transaction.fx)
+// currency = original currency of the holding
+function toEurFx(amountInOrigCurrency, currency, historicalFx) {
+  if (currency === 'EUR') return amountInOrigCurrency;
+  if (fxMode === 'historical') {
+    // Use the stored purchase-date FX rate
+    return amountInOrigCurrency * (historicalFx || FALLBACK_FX[currency] || 1);
+  } else {
+    // Use today's live rate
+    const liveRate = liveFxRates[currency] || FALLBACK_FX[currency] || 1;
+    return amountInOrigCurrency * liveRate;
+  }
+}
+
 let bmPeriod = 'ytd';
 let bmLineChart = null;
 let bmData = {}; // { symbol: { points:[{date,pct}], totalReturn, name, color } }
@@ -1545,6 +1812,8 @@ function renderBmLineChart(datasets) {
 // INIT
 // ═══════════════════════════════════════
 document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
+// Fetch live FX rates on startup
+fetchLiveFxRates();
 // Set initial toggle button colors
 document.querySelectorAll('.bm-toggle.active').forEach(btn => {
   btn.style.background = btn.dataset.color;
