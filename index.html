@@ -1447,17 +1447,20 @@ function renderBmLineChart(datasets) {
   if (bmLineChart) { bmLineChart.destroy(); bmLineChart = null; }
   const canvas = document.getElementById('bmLineCanvas');
   if (!datasets.length || !canvas) return;
+  if (typeof Chart === 'undefined') {
+    document.getElementById('bmLegend').innerHTML = '<span style="color:var(--red);font-size:12px;">Chart.js not loaded yet — please wait a moment and click Refresh</span>';
+    return;
+  }
 
-  // Align all datasets to common dates
-  // Use portfolio dates as reference if available, else first index
-  const ref = datasets[0];
-  const labels = ref.points.map(p => p.date);
+  // Collect all unique dates across all datasets and sort them
+  const allDates = new Set();
+  datasets.forEach(d => d.points.forEach(p => allDates.add(p.date)));
+  const labels = [...allDates].sort();
 
   const chartDatasets = datasets.map(d => {
-    // Interpolate d.points to match labels
     const ptMap = {};
     d.points.forEach(p => { ptMap[p.date] = p.pct; });
-    // Forward-fill for missing dates
+    // Forward-fill missing dates
     let last = 0;
     const data = labels.map(lbl => {
       if (ptMap[lbl] !== undefined) { last = ptMap[lbl]; return ptMap[lbl]; }
@@ -1468,18 +1471,16 @@ function renderBmLineChart(datasets) {
       data,
       borderColor: d.color,
       backgroundColor: 'transparent',
-      borderWidth: d.isPortfolio ? 2.5 : 1.5,
-      borderDash: d.isPortfolio ? [] : [],
+      borderWidth: d.isPortfolio ? 3 : 1.8,
       pointRadius: 0,
-      pointHoverRadius: 4,
+      pointHoverRadius: 5,
       tension: 0.3,
     };
   });
 
-  // Format labels for display
   const displayLabels = labels.map(l => {
-    const d = new Date(l);
-    return d.toLocaleDateString('en-GB', { month:'short', year:'2-digit' });
+    const dt = new Date(l + 'T00:00:00');
+    return dt.toLocaleDateString('en-GB', { month:'short', year:'2-digit' });
   });
 
   bmLineChart = new Chart(canvas, {
@@ -1493,40 +1494,48 @@ function renderBmLineChart(datasets) {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#1e1f1b',
-          borderColor: 'rgba(255,255,255,0.1)',
+          borderColor: 'rgba(255,255,255,0.12)',
           borderWidth: 1,
           titleColor: '#8a8880',
           bodyColor: '#f0ede6',
+          padding: 10,
           callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+            }
           }
         }
       },
       scales: {
         x: {
-          ticks: { color:'#555450', font:{ size:10, family:"'DM Mono', monospace" }, maxTicksLimit:12 },
-          grid: { color:'rgba(255,255,255,0.05)' }
+          ticks: {
+            color: '#555450',
+            font: { size: 10, family: "'DM Mono', monospace" },
+            maxTicksLimit: 12,
+            maxRotation: 0
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' }
         },
         y: {
           ticks: {
-            color:'#555450',
-            font:{ size:10, family:"'DM Mono', monospace" },
-            callback: v => (v>=0?'+':'')+v.toFixed(1)+'%'
+            color: '#555450',
+            font: { size: 10, family: "'DM Mono', monospace" },
+            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
           },
-          grid: { color:'rgba(255,255,255,0.05)' },
-          afterFit: ctx => { ctx.width = 60; }
+          grid: { color: 'rgba(255,255,255,0.04)' }
         }
       }
     }
   });
 
-  // Custom legend
+  // Legend
   document.getElementById('bmLegend').innerHTML = datasets.map(d =>
     `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);">
-      <div style="width:24px;height:${d.isPortfolio?3:2}px;background:${d.color};border-radius:2px;"></div>
+      <div style="width:24px;height:${d.isPortfolio ? 3 : 2}px;background:${d.color};border-radius:2px;flex-shrink:0;"></div>
       <span style="font-family:var(--font-mono);">${d.name}</span>
-      <span style="${d.totalReturn>=0?'color:var(--accent)':'color:var(--red)'};font-weight:500;">
-        ${d.totalReturn>=0?'+':''}${d.totalReturn.toFixed(2)}%
+      <span class="${d.totalReturn >= 0 ? 'pos' : 'neg'}" style="font-weight:500;">
+        ${d.totalReturn >= 0 ? '+' : ''}${d.totalReturn.toFixed(2)}%
       </span>
     </div>`
   ).join('');
@@ -1546,5 +1555,6 @@ renderDashboard();
 startAutoRefresh();
 setTimeout(()=>{if(computeHoldings().length>0)fetchAllPrices(false);},800);
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </body>
 </html>
