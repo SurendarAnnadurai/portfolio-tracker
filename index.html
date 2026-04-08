@@ -700,18 +700,37 @@ function srcLabel(ticker) {
 // ═══════════════════════════════════════
 async function fetchYahooViaProxy(symbol) {
   try {
-    // /api/price is our Vercel serverless function — no CORS issues
     const r = await fetch(`/api/price?symbol=${encodeURIComponent(symbol)}`);
     if (!r.ok) return null;
     const d = await r.json();
     const result = d?.chart?.result?.[0];
     if (!result) return null;
-    const meta   = result.meta;
-    const closes = result.indicators?.quote?.[0]?.close?.filter(c=>c!=null) || [];
-    const price  = meta.regularMarketPrice || closes[closes.length-1];
-    const prev   = meta.chartPreviousClose || meta.previousClose || closes[closes.length-2] || price;
+    const meta = result.meta;
+
+    // Current price — always regularMarketPrice (live or last official close)
+    const price = meta.regularMarketPrice;
     if (!price) return null;
-    return { price, prevClose:prev, currency:meta.currency||'USD', source:'Yahoo Finance' };
+
+    // prevClose priority: server already picked best value into chartPreviousClose
+    // but we also check regularMarketPreviousClose as additional source
+    const prev = meta.regularMarketPreviousClose ||
+                 meta.chartPreviousClose ||
+                 meta.previousClose ||
+                 price;
+
+    // Sanity check — if implied daily change >20% something is wrong
+    // (genuine 20% moves are extremely rare for indices/blue chips)
+    const changePct = prev > 0 ? Math.abs((price - prev) / prev) * 100 : 0;
+    const safePrev = changePct > 20
+      ? (meta.chartPreviousClose || meta.regularMarketPreviousClose || prev)
+      : prev;
+
+    return {
+      price,
+      prevClose: safePrev,
+      currency: meta.currency || 'USD',
+      source: 'Yahoo Finance'
+    };
   } catch(e) { return null; }
 }
 
