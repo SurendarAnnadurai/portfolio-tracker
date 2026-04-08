@@ -166,6 +166,14 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .resolve-auto{background:rgba(200,240,96,0.12);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--font-mono);}
 .resolve-review{background:rgba(232,201,106,0.12);color:var(--gold);font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--font-mono);}
 .resolve-input{padding:3px 7px;border-radius:var(--r);border:1px solid var(--gold);background:var(--bg3);color:var(--text);font-family:var(--font-mono);font-size:11px;width:130px;}
+
+.mkt-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:0;}
+.mkt-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:0.9rem 1.1rem;position:relative;overflow:hidden;}
+.mkt-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--mkt-color,var(--border2));}
+.mkt-card-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.mkt-card-value{font-family:var(--font-display);font-size:20px;font-weight:500;letter-spacing:-0.02em;line-height:1;margin-bottom:3px;}
+.mkt-card-sub{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+.mkt-card-pnl{font-size:11px;font-family:var(--font-mono);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -279,6 +287,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div id="holdings" class="section">
         <h1 class="page-title">Holdings</h1>
         <p class="page-sub">All open positions</p>
+        <div id="holdingsOverview" style="margin-bottom:1rem;"></div>
         <div class="card">
           <div class="filter-bar sticky-filter">
             <input class="filter-search" id="holdingsSearch" placeholder="Search ticker or name…" oninput="renderHoldingsTable()"/>
@@ -1212,34 +1221,111 @@ function renderDailyPnL(){
 // ═══════════════════════════════════════
 // HOLDINGS TABLE
 // ═══════════════════════════════════════
-function renderHoldingsTable(){
-  const q=gv('holdingsSearch'),mkt=gv('holdingsMktFilter'),pnlF=gv('holdingsPnlFilter');
-  let data=computeHoldings().filter(h=>matchSearch(h,q)&&(!mkt||h.market.toLowerCase()===mkt)&&(!pnlF||(pnlF==='pos'?h.pnlVsCostEur>=0:h.pnlVsCostEur<0)));
-  data=sortData(data,'holdings',sortState.holdings.col,sortState.holdings.dir);
-  const el=document.getElementById('holdingsTable');
-  if(!data.length){el.innerHTML='<div class="empty">No holdings match filters.</div>';return;}
-  const fxModeLabel = fxMode === 'live' ? 'Live FX' : 'Hist FX';
-  el.innerHTML=`<table><thead><tr>
+function renderHoldingsOverview(allHoldings) {
+  const el = document.getElementById('holdingsOverview');
+  if (!el) return;
+
+  // Group markets — MutualFund and SGB count as India exposure
+  const groups = {
+    India:  { label:'India', color:'#e8a84a', currency:'INR', sym:'₹', holdings:[] },
+    US:     { label:'US',    color:'#5a9ce8', currency:'USD', sym:'$', holdings:[] },
+    Europe: { label:'Europe',color:'#4acfb4', currency:'EUR', sym:'€', holdings:[] },
+    Crypto: { label:'Crypto',color:'#a87ee8', currency:'EUR', sym:'€', holdings:[] },
+  };
+
+  allHoldings.forEach(h => {
+    const mkt = (h.market === 'MutualFund' || h.market === 'SGB') ? 'India' : h.market;
+    if (groups[mkt]) groups[mkt].holdings.push(h);
+  });
+
+  // FX rates for converting EUR values back to native currency
+  const eurToNative = {
+    INR: 1 / (liveFxRates['INR'] || FALLBACK_FX['INR'] || 0.011),
+    USD: 1 / (liveFxRates['USD'] || FALLBACK_FX['USD'] || 0.92),
+    EUR: 1,
+    GBP: 1 / (liveFxRates['GBP'] || FALLBACK_FX['GBP'] || 1.16),
+  };
+
+  const cards = Object.entries(groups)
+    .filter(([,g]) => g.holdings.length > 0)
+    .map(([key, g]) => {
+      const totalValueEur  = g.holdings.reduce((s,h) => s + h.currentValueEur, 0);
+      const totalCostEur   = g.holdings.reduce((s,h) => s + h.remainCostEur,   0);
+      const totalPnlEur    = totalValueEur - totalCostEur;
+      const totalDailyEur  = g.holdings.filter(h=>h.hasLive).reduce((s,h) => s + h.dailyPnlEur, 0);
+      const pnlPct         = totalCostEur > 0 ? (totalPnlEur / totalCostEur) * 100 : 0;
+      const nativeMul      = eurToNative[g.currency] || 1;
+
+      // Format in native currency
+      const fmtNative = (eurVal) => {
+        const v = eurVal * nativeMul;
+        const a = Math.abs(v);
+        let str;
+        if (a >= 1e7)      str = (v/1e7).toFixed(2) + 'Cr';
+        else if (a >= 1e5) str = (v/1e5).toFixed(2) + 'L';
+        else if (a >= 1000) str = Math.round(v).toLocaleString('en');
+        else               str = v.toFixed(0);
+        return g.sym + str;
+      };
+
+      const pnlSign = totalPnlEur >= 0 ? '+' : '';
+      const daySign = totalDailyEur >= 0 ? '+' : '';
+      const pnlCls  = totalPnlEur >= 0 ? 'pos' : 'neg';
+      const dayCls  = totalDailyEur >= 0 ? 'pos' : 'neg';
+      const hasLive = g.holdings.some(h => h.hasLive);
+
+      return `<div class="mkt-card" style="--mkt-color:${g.color}">
+        <div class="mkt-card-label">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0;"></span>
+          ${g.label} <span style="color:var(--text3);font-weight:400;">${g.holdings.length} positions</span>
+        </div>
+        <div class="mkt-card-value">${fmtNative(totalValueEur)}</div>
+        <div class="mkt-card-sub">Invested ${fmtNative(totalCostEur)}</div>
+        <div class="mkt-card-pnl">
+          <span class="${pnlCls}">${pnlSign}${fmtNative(totalPnlEur)} (${pnlSign}${pnlPct.toFixed(2)}%)</span>
+          ${hasLive ? `<span style="color:var(--text3);margin-left:6px;">·</span> <span class="${dayCls}" style="font-size:10px;">${daySign}${fmtNative(totalDailyEur)} today</span>` : ''}
+        </div>
+      </div>`;
+    });
+
+  el.innerHTML = `<div class="mkt-overview">${cards.join('')}</div>`;
+}
+
+function renderHoldingsTable() {
+  const q=gv('holdingsSearch'), mkt=gv('holdingsMktFilter'), pnlF=gv('holdingsPnlFilter');
+  const allHoldings = computeHoldings();
+
+  // Render market overview cards (always uses all holdings, ignoring filters)
+  renderHoldingsOverview(allHoldings);
+
+  let data = allHoldings.filter(h =>
+    matchSearch(h,q) &&
+    (!mkt || h.market.toLowerCase()===mkt || ((mkt==='india') && (h.market==='MutualFund'||h.market==='SGB'))) &&
+    (!pnlF || (pnlF==='pos' ? h.pnlVsCostEur>=0 : h.pnlVsCostEur<0))
+  );
+  data = sortData(data, 'holdings', sortState.holdings.col, sortState.holdings.dir);
+
+  const el = document.getElementById('holdingsTable');
+  if (!data.length) { el.innerHTML='<div class="empty">No holdings match filters.</div>'; return; }
+
+  el.innerHTML = `<table><thead><tr>
     ${thSort('holdings','ticker','Ticker')}
     ${thSort('holdings','market','Market')}
     ${thSort('holdings','qty','Qty')}
-    <th>Bonus</th>
     ${thSort('holdings','avgCostEur','Avg cost')}
     ${thSort('holdings','currentPriceEur','Price')}
-    ${thSort('holdings','currentValueEur','Value (${fxModeLabel})')}
+    ${thSort('holdings','currentValueEur','Value')}
     ${thSort('holdings','pnlVsCostEur','P&L')}
     ${thSort('holdings','pnlVsCostPct','P&L %')}
     ${thSort('holdings','dailyPnlEur','Daily P&L')}
     ${thSort('holdings','dailyPnlPct','Daily %')}
-    ${thSort('holdings','fxChangePct','FX Δ')}
     ${thSort('holdings','dividendsEur','Dividends')}
     ${thSort('holdings','divYield','Div yield')}
-  </tr></thead><tbody>`+
-  data.map(h=>`<tr>
+  </tr></thead><tbody>` +
+  data.map(h => `<tr>
     <td style="font-family:var(--font-mono);font-weight:500;">${h.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${h.name}</span></td>
     <td>${mktBadge(h.market)}</td>
     <td style="font-family:var(--font-mono);">${h.qty<1?h.qty.toFixed(4):h.qty%1===0?h.qty:h.qty.toFixed(2)}</td>
-    <td style="font-family:var(--font-mono);color:var(--purple);">${h.bonusQty>0?'+'+h.bonusQty:'—'}</td>
     <td style="font-family:var(--font-mono);">${fmtN(toBase(h.avgCostEur))}<span style="font-size:10px;color:var(--text3);"> /unit</span></td>
     <td style="font-family:var(--font-mono);">${h.hasLive?fmtN(toBase(h.currentPriceEur)):'—'}</td>
     <td style="font-family:var(--font-mono);font-weight:500;">${fmtN(toBase(h.currentValueEur))}</td>
@@ -1247,10 +1333,9 @@ function renderHoldingsTable(){
     <td class="${clsPnl(h.pnlVsCostPct)}" style="font-family:var(--font-mono);">${fmtPct(h.pnlVsCostPct)}</td>
     <td class="${clsPnl(h.dailyPnlEur)}" style="font-family:var(--font-mono);">${h.hasLive?fmtSign(toBase(h.dailyPnlEur)):'—'}</td>
     <td class="${clsPnl(h.dailyPnlPct)}" style="font-family:var(--font-mono);">${h.hasLive?fmtPct(h.dailyPnlPct):'—'}</td>
-    <td class="${clsPnl(h.fxChangePct)}" style="font-family:var(--font-mono);" title="${h.currency} at purchase: ${h.avgHistFx.toFixed(6)} → live: ${h.liveFx.toFixed(6)}">${h.currency==='EUR'?'—':fmtPct(h.fxChangePct)}</td>
     <td style="font-family:var(--font-mono);color:var(--gold);">${fmtN(toBase(h.dividendsEur))}</td>
     <td class="${h.divYield>0?'pos':''}" style="font-family:var(--font-mono);">${h.divYield.toFixed(2)}%</td>
-  </tr>`).join('')+'</tbody></table>';
+  </tr>`).join('') + '</tbody></table>';
 }
 
 // ═══════════════════════════════════════
