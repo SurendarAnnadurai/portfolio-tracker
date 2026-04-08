@@ -26,39 +26,33 @@ export default async function handler(req, res) {
 
       const meta   = result.meta;
       const closes = result.indicators?.quote?.[0]?.close || [];
-      const timestamps = result.timestamp || [];
 
-      // Filter out null closes and pair with timestamps
-      const validPoints = closes
-        .map((c, i) => ({ close: c, ts: timestamps[i] }))
-        .filter(p => p.close !== null && p.close !== undefined);
+      // Valid historical closes (daily bars — each is a day's close)
+      const validCloses = closes.filter(c => c !== null && c !== undefined);
 
-      const currentPrice = meta.regularMarketPrice || (validPoints.length > 0 ? validPoints[validPoints.length - 1].close : null);
-
-      // prevClose = the actual previous trading day close from the data array
-      // NOT chartPreviousClose which can be stale across weekends
-      let prevClose;
-      if (validPoints.length >= 2) {
-        // If market is currently open, last point in array = today's intraday
-        // second-to-last = yesterday's close
-        // If market is closed, last point = today's close, second-to-last = yesterday
-        const isMarketOpen = meta.marketState === 'REGULAR';
-        if (isMarketOpen) {
-          // Use second-to-last as previous close
-          prevClose = validPoints[validPoints.length - 2].close;
-        } else {
-          // Market closed - last two points are today and yesterday closes
-          prevClose = validPoints[validPoints.length - 2].close;
-        }
-      } else if (validPoints.length === 1) {
-        prevClose = meta.chartPreviousClose || meta.previousClose || validPoints[0].close;
-      } else {
-        prevClose = meta.chartPreviousClose || meta.previousClose || currentPrice;
-      }
-
+      // Current live price — always use regularMarketPrice when available
+      // This is the actual current price whether market is open or closed
+      const currentPrice = meta.regularMarketPrice;
       if (!currentPrice) continue;
 
-      // Return enriched response with cleaner price data
+      let prevClose;
+      const marketState = meta.marketState; // 'REGULAR', 'PRE', 'POST', 'CLOSED'
+
+      if (marketState === 'REGULAR') {
+        // Market currently open — today's bar is incomplete/not in closes array yet
+        // chartPreviousClose = yesterday's official close = correct prevClose
+        prevClose = meta.chartPreviousClose || meta.previousClose || validCloses[validCloses.length - 1];
+      } else {
+        // Market closed/pre/post — regularMarketPrice = today's official close
+        // The last complete daily bar in closes[] = today's close
+        // Second to last = yesterday's close = correct prevClose
+        if (validCloses.length >= 2) {
+          prevClose = validCloses[validCloses.length - 2];
+        } else {
+          prevClose = meta.chartPreviousClose || meta.previousClose || currentPrice;
+        }
+      }
+
       return res.status(200).json({
         chart: {
           result: [{
@@ -75,5 +69,5 @@ export default async function handler(req, res) {
     } catch(e) { continue; }
   }
 
-  return res.status(502).json({ error: 'Failed to fetch from Yahoo Finance' });
+  return res.status(502).json({ error: `Failed to fetch from Yahoo Finance` });
 }
