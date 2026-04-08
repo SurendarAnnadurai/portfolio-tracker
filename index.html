@@ -999,16 +999,27 @@ function computeHoldings() {
       hasLive = true;
     }
 
-    // Convert to EUR using active FX mode
+    // For display value and P&L vs cost — use active FX mode (hist or live)
     const currentPriceEur = hasLive ? currentPriceInOrigCcy * activeFx : avgCostEur;
-    const prevPriceEur    = hasLive ? prevPriceInOrigCcy    * activeFx : avgCostEur;
-
     const currentValueEur = currentPriceEur * netQty;
-    const prevValueEur    = prevPriceEur    * netQty;
     const pnlVsCostEur    = currentValueEur - remainCostEur;
-    const pnlVsCostPct    = remainCostEur>0?(pnlVsCostEur/remainCostEur)*100:0;
-    const dailyPnlEur     = hasLive ? currentValueEur - prevValueEur : 0;
-    const dailyPnlPct     = hasLive && prevValueEur>0 ? (dailyPnlEur/prevValueEur)*100 : 0;
+    const pnlVsCostPct    = remainCostEur > 0 ? (pnlVsCostEur / remainCostEur) * 100 : 0;
+
+    // For daily P&L — ALWAYS use live FX so daily % matches Yahoo Finance exactly
+    // Daily move is price-to-price: FX mode should not distort intraday %
+    const liveFxForDaily  = liveFxRates[h.currency] || FALLBACK_FX[h.currency] || 1;
+    const currentPriceEurLive = hasLive ? currentPriceInOrigCcy * liveFxForDaily : avgCostEur;
+    const prevPriceEurLive    = hasLive ? (prevPriceInOrigCcy || currentPriceInOrigCcy) * liveFxForDaily : avgCostEur;
+    const prevPriceEur        = hasLive ? prevPriceInOrigCcy * activeFx : avgCostEur;
+    const prevValueEur        = prevPriceEur * netQty;
+
+    // Daily P&L in EUR (using live FX for accuracy)
+    const dailyPriceChangeOrig = hasLive ? currentPriceInOrigCcy - (prevPriceInOrigCcy || currentPriceInOrigCcy) : 0;
+    const dailyPnlEur    = hasLive ? dailyPriceChangeOrig * liveFxForDaily * netQty : 0;
+    // Daily % is pure price movement — same as Yahoo shows (no FX distortion)
+    const dailyPnlPct    = hasLive && prevPriceInOrigCcy && prevPriceInOrigCcy > 0
+      ? (dailyPriceChangeOrig / prevPriceInOrigCcy) * 100
+      : 0;
 
     // Currency depreciation/appreciation vs purchase date
     const fxChangePct = avgHistFx > 0 ? ((liveFx - avgHistFx) / avgHistFx) * 100 : 0;
