@@ -6,8 +6,8 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
   const urls = [
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=10d`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=10d`,
   ];
 
   for (const url of urls) {
@@ -24,34 +24,71 @@ export default async function handler(req, res) {
       const result = data?.chart?.result?.[0];
       if (!result) continue;
 
-      const meta   = result.meta;
-      const closes = result.indicators?.quote?.[0]?.close || [];
+      const meta       = result.meta;
+      const closes     = result.indicators?.quote?.[0]?.close  || [];
+      const timestamps = result.timestamp || [];
 
-      // Valid historical closes (daily bars — each is a day's close)
-      const validCloses = closes.filter(c => c !== null && c !== undefined);
-
-      // Current live price — always use regularMarketPrice when available
-      // This is the actual current price whether market is open or closed
+      // Current live price — always regularMarketPrice
       const currentPrice = meta.regularMarketPrice;
       if (!currentPrice) continue;
 
-      let prevClose;
-      const marketState = meta.marketState; // 'REGULAR', 'PRE', 'POST', 'CLOSED'
+      // Build list of valid (date, close) pairs, sorted by date ascending
+      const bars = timestamps
+        .map((ts, i) => ({ ts, close: closes[i] }))
+        .filter(b => b.close !== null && b.close !== undefined && b.ts);
+      bars.sort((a, b) => a.ts - b.ts);
 
-      if (marketState === 'REGULAR') {
-        // Market currently open — today's bar is incomplete/not in closes array yet
-        // chartPreviousClose = yesterday's official close = correct prevClose
-        prevClose = meta.chartPreviousClose || meta.previousClose || validCloses[validCloses.length - 1];
-      } else {
-        // Market closed/pre/post — regularMarketPrice = today's official close
-        // The last complete daily bar in closes[] = today's close
-        // Second to last = yesterday's close = correct prevClose
-        if (validCloses.length >= 2) {
-          prevClose = validCloses[validCloses.length - 2];
+      let prevClose;
+
+      // Strategy: use meta.regularMarketPreviousClose if available — 
+      // Yahoo sets this explicitly to the previous trading day official close.
+      // This is the most reliable field across all market states and timezones.
+      if (meta.regularMarketPreviousClose && meta.regularMarketPreviousClose > 0) {
+        prevClose = meta.regularMarketPreviousClose;
+      } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0) {
+        prevClose = meta.chartPreviousClose;
+      } else if (bars.length >= 2) {
+        // Fallback: determine today's bar by comparing with current date in exchange timezone
+        const nowUtc = Date.now() / 1000;
+        const marketState = meta.marketState;
+
+        if (marketState === 'REGULAR') {
+          // Market open: last complete bar = yesterday. Second to last = day before.
+          // regularMarketPrice is live. prevClose = last bar's close = yesterday.
+          prevClose = bars[bars.length - 1].close;
         } else {
-          prevClose = meta.chartPreviousClose || meta.previousClose || currentPrice;
+          // Market closed/pre/post: last bar may include today's close.
+          // Check if last bar timestamp is today (within 24h)
+          const lastBarAge = nowUtc - bars[bars.length - 1].ts;
+          if (lastBarAge < 86400) {
+            // Last bar is today — use second to last as prevClose
+            prevClose = bars.length >= 2 ? bars[bars.length - 2].close : bars[bars.length - 1].close;
+          } else {
+            // Last bar is yesterday or older — regularMarketPrice moved since
+            prevClose = bars[bars.length - 1].close;
+          }
         }
+      } else {
+        prevClose = currentPrice;
       }
+
+      // Sanity check: if daily change > 25%, something is wrong — use chartPreviousClose
+      const impliedChange = Math.abs((currentPrice - prevClose) / prevClose) * 100;
+      if (impliedChange > 25 && meta.chartPreviousClose > 0) {
+        prevClose = meta.chartPreviousClose;
+      }
+
+      // Debug info returned for troubleshooting
+      const debug = {
+        symbol,
+        currentPrice,
+        prevClose,
+        impliedChangePct: ((currentPrice - prevClose) / prevClose * 100).toFixed(2),
+        marketState: meta.marketState,
+        regularMarketPreviousClose: meta.regularMarketPreviousClose,
+        chartPreviousClose: meta.chartPreviousClose,
+        barCount: bars.length,
+      };
 
       return res.status(200).json({
         chart: {
@@ -62,9 +99,11 @@ export default async function handler(req, res) {
               regularMarketPrice: currentPrice,
               chartPreviousClose: prevClose,
               previousClose: prevClose,
+              regularMarketPreviousClose: prevClose,
             }
           }]
-        }
+        },
+        _debug: debug
       });
     } catch(e) { continue; }
   }
