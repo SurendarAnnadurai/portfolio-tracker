@@ -197,6 +197,13 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .dash-mkt-value{font-size:22px;font-weight:500;letter-spacing:-0.02em;color:var(--text);line-height:1;margin-bottom:4px;}
 .dash-mkt-pnl{font-size:11px;font-family:var(--font-mono);margin-bottom:3px;}
 .dash-mkt-pos{font-size:10px;color:var(--text3);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:var(--font-display);font-size:20px;font-weight:300;letter-spacing:-0.02em;margin-bottom:1.25rem;color:var(--text);}
+.modal-actions{display:flex;gap:8px;margin-top:1.25rem;justify-content:flex-end;}
+.btn-edit{padding:3px 10px;background:transparent;border:1px solid var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--text2);font-family:var(--font-body);}
+.btn-edit:hover{border-color:var(--accent);color:var(--accent);}
 </style>
 </head>
 <body>
@@ -814,12 +821,16 @@ async function fetchAllPrices(manual=false) {
   const amfiPromises=byType.amfi.map(async ticker=>{
     const result=await fetchAMFI(getPriceSource(ticker).code);
     mark(ticker,result);
-    // Update name from AMFI if it was a scheme code
-    if(result?.name) transactions.filter(t=>t.ticker===ticker&&(t.name===ticker||/^\d+$/.test(t.name))).forEach(t=>t.name=result.name);
+    // Update name from AMFI if it was a scheme code — track if anything changed
+    if(result?.name){
+      let nameChanged=false;
+      transactions.filter(t=>t.ticker===ticker&&(t.name===ticker||/^\d+$/.test(t.name))).forEach(t=>{t.name=result.name;nameChanged=true;});
+      if(nameChanged) save(); // Only save if names actually updated
+    }
   });
 
   await Promise.allSettled([goldPromise,...yahooPromises,cryptoPromise,...amfiPromises]);
-  savePrices(); save();
+  savePrices(); // Note: do NOT call save() here — only price data changes, not transactions
   fetchLiveFxRates();
   isFetching=false;
   const now=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
@@ -1155,6 +1166,11 @@ function addTx(){
   const fx=parseFloat(document.getElementById('f_fx').value)||FALLBACK_FX[currency]||1;
   const amtOrig=type==='dividend'?price:qty*price;
   const amtEur=type==='bonus'?0:amtOrig*fx;
+  // Re-read from storage to avoid overwriting data saved by other operations
+  const stored = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  const storedIds = new Set(stored.map(t=>t.id));
+  const memOnly = transactions.filter(t=>!storedIds.has(t.id));
+  transactions = [...stored, ...memOnly];
   transactions.push({id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')});
   save();
   document.getElementById('addMsg').textContent='Added ✓';
@@ -1165,6 +1181,8 @@ function addTx(){
 
 function deleteTx(id){
   if(!confirm('Delete this transaction?'))return;
+  // Re-read from storage first to ensure we have the full current list
+  transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
   transactions=transactions.filter(t=>t.id!=id);
   save();renderTxTable();renderDashboard();
 }
@@ -1520,7 +1538,7 @@ function renderTxTable(){
   const el=document.getElementById('txTable');
   if(!data.length){el.innerHTML='<div class="empty">No transactions match filters.</div>';return;}
   el.innerHTML=`<table><thead><tr>${thSort('tx','date','Date')}${thSort('tx','ticker','Ticker')}<th>Type</th><th>Market</th>${thSort('tx','qty','Qty')}${thSort('tx','price','Price')}${thSort('tx','amtEur','EUR value')}<th>FX</th><th>Notes</th><th></th></tr></thead><tbody>`+
-  data.map(tx=>`<tr><td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;">${tx.date}</td><td style="font-family:var(--font-mono);font-weight:500;">${tx.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${tx.name}</span></td><td><span class="tag tag-${tx.type}">${tx.type}</span></td><td>${mktBadge(tx.market)}</td><td style="font-family:var(--font-mono);">${tx.qty||'—'}</td><td style="font-family:var(--font-mono);">${Number(tx.price).toLocaleString()} ${tx.currency}</td><td style="font-family:var(--font-mono);">${tx.amtEur.toFixed(2)}</td><td style="font-size:11px;font-family:var(--font-mono);">${Number(tx.fx).toFixed(5)} ${tx.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td><td style="font-size:12px;color:var(--text3);">${tx.notes||''}</td><td><button class="btn-danger" onclick="deleteTx(${tx.id})">del</button></td></tr>`).join('')+'</tbody></table>';
+  data.map(tx=>`<tr><td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;">${tx.date}</td><td style="font-family:var(--font-mono);font-weight:500;">${tx.ticker}<br><span style="font-size:11px;color:var(--text3);font-weight:400;">${tx.name}</span></td><td><span class="tag tag-${tx.type}">${tx.type}</span></td><td>${mktBadge(tx.market)}</td><td style="font-family:var(--font-mono);">${tx.qty||'—'}</td><td style="font-family:var(--font-mono);">${Number(tx.price).toLocaleString()} ${tx.currency}</td><td style="font-family:var(--font-mono);">${tx.amtEur.toFixed(2)}</td><td style="font-size:11px;font-family:var(--font-mono);">${Number(tx.fx).toFixed(5)} ${tx.fxAuto?'<span class="fx-auto">auto</span>':'<span class="fx-manual">man</span>'}</td><td style="font-size:12px;color:var(--text3);">${tx.notes||''}</td><td style="display:flex;gap:4px;"><button class="btn-edit" onclick="openEditModal(${tx.id})">edit</button><button class="btn-danger" onclick="deleteTx(${tx.id})">del</button></td></tr>`).join('')+'</tbody></table>';
 }
 
 // ═══════════════════════════════════════
@@ -1661,6 +1679,16 @@ function confirmImport() {
       parsedRows[idx].resolveStatus = 'manual';
     }
   });
+
+  // CRITICAL: Re-read transactions fresh from localStorage before adding
+  // This prevents a race condition where auto-refresh may have saved
+  // an older version of transactions during import
+  const freshFromStorage = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  // Merge: use storage as base, but keep any in-memory additions not yet in storage
+  const inStorageIds = new Set(freshFromStorage.map(t => t.id));
+  const inMemoryOnly = transactions.filter(t => !inStorageIds.has(t.id));
+  transactions = [...freshFromStorage, ...inMemoryOnly];
+
   const valid = parsedRows.filter(r => r.valid);
   valid.forEach(r => transactions.push({
     id: Date.now()+Math.random(), market:r.market, ticker:r.ticker,
@@ -2038,6 +2066,81 @@ function renderBmLineChart(datasets) {
   ).join('');
 }
 
+
+// ═══════════════════════════════════════
+// EDIT TRANSACTION MODAL
+// ═══════════════════════════════════════
+let editingId = null;
+
+function openEditModal(id) {
+  // Re-read from storage to get latest data
+  transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  const tx = transactions.find(t => t.id == id);
+  if (!tx) return;
+  editingId = id;
+
+  // Populate form
+  document.getElementById('em_market').value   = tx.market   || 'India';
+  document.getElementById('em_ticker').value   = tx.ticker   || '';
+  document.getElementById('em_name').value     = tx.name     || '';
+  document.getElementById('em_type').value     = tx.type     || 'buy';
+  document.getElementById('em_date').value     = tx.date     || '';
+  document.getElementById('em_qty').value      = tx.qty      || '';
+  document.getElementById('em_price').value    = tx.price    || '';
+  document.getElementById('em_currency').value = tx.currency || 'EUR';
+  document.getElementById('em_fx').value       = tx.fx       ? Number(tx.fx).toFixed(6) : '1';
+  document.getElementById('em_notes').value    = tx.notes    || '';
+  document.getElementById('em_msg').textContent = '';
+
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+  editingId = null;
+}
+
+function saveEdit() {
+  const msg = document.getElementById('em_msg');
+  const ticker = document.getElementById('em_ticker').value.trim().toUpperCase();
+  const date   = document.getElementById('em_date').value;
+  const type   = document.getElementById('em_type').value;
+  const price  = type === 'bonus' ? 0 : (parseFloat(document.getElementById('em_price').value) || 0);
+
+  if (!ticker || !date) { msg.textContent = 'Ticker and date are required.'; return; }
+  if (type !== 'bonus' && type !== 'dividend' && price <= 0) { msg.textContent = 'Price must be > 0.'; return; }
+
+  const qty      = type === 'dividend' ? 0 : (parseFloat(document.getElementById('em_qty').value) || 0);
+  const currency = document.getElementById('em_currency').value;
+  const fx       = parseFloat(document.getElementById('em_fx').value) || FALLBACK_FX[currency] || 1;
+  const amtOrig  = type === 'dividend' ? price : qty * price;
+  const amtEur   = type === 'bonus' ? 0 : amtOrig * fx;
+
+  // Re-read from storage, apply edit, save back
+  transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  const idx = transactions.findIndex(t => t.id == editingId);
+  if (idx === -1) { msg.textContent = 'Transaction not found.'; return; }
+
+  transactions[idx] = {
+    ...transactions[idx],
+    market:   document.getElementById('em_market').value,
+    ticker, name: document.getElementById('em_name').value.trim() || ticker,
+    type, date, qty, price, currency, fx, amtEur,
+    notes: document.getElementById('em_notes').value.trim(),
+    fxAuto: false // manually edited — mark as manual
+  };
+
+  save();
+  closeEditModal();
+  renderTxTable();
+  renderDashboard();
+  if (document.getElementById('holdings').classList.contains('active')) renderHoldingsTable();
+  if (document.getElementById('daily').classList.contains('active')) renderDailyPnL();
+}
+
+// Close on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
@@ -2055,5 +2158,66 @@ startAutoRefresh();
 setTimeout(()=>{if(computeHoldings().length>0)fetchAllPrices(false);},800);
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+<!-- Edit Transaction Modal -->
+<div id="editModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal-box">
+    <div class="modal-title">Edit Transaction</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Market</label>
+        <select id="em_market">
+          <option value="India">India (NSE/BSE)</option>
+          <option value="US">US (NYSE/NASDAQ)</option>
+          <option value="Europe">Europe (Xetra/LSE)</option>
+          <option value="Crypto">Crypto</option>
+          <option value="MutualFund">Mutual Fund (India)</option>
+          <option value="SGB">SGB / Gold Bond</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Ticker</label>
+        <input type="text" id="em_ticker" placeholder="RELIANCE.NS"/>
+      </div>
+      <div class="form-group"><label>Name</label>
+        <input type="text" id="em_name" placeholder="Full name"/>
+      </div>
+      <div class="form-group"><label>Type</label>
+        <select id="em_type">
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="dividend">Dividend</option>
+          <option value="bonus">Bonus shares</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Date</label>
+        <input type="date" id="em_date"/>
+      </div>
+      <div class="form-group"><label>Quantity</label>
+        <input type="number" id="em_qty" step="any"/>
+      </div>
+      <div class="form-group"><label>Price per unit</label>
+        <input type="number" id="em_price" step="any"/>
+      </div>
+      <div class="form-group"><label>Currency</label>
+        <select id="em_currency">
+          <option value="EUR">EUR</option>
+          <option value="USD">USD</option>
+          <option value="INR">INR</option>
+          <option value="GBP">GBP</option>
+        </select>
+      </div>
+      <div class="form-group"><label>FX rate → EUR</label>
+        <input type="number" id="em_fx" step="any"/>
+      </div>
+      <div class="form-group"><label>Notes</label>
+        <input type="text" id="em_notes"/>
+      </div>
+    </div>
+    <div id="em_msg" style="font-size:12px;color:var(--red);margin-top:6px;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
