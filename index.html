@@ -174,6 +174,29 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 .mkt-card-value{font-family:var(--font-display);font-size:20px;font-weight:500;letter-spacing:-0.02em;line-height:1;margin-bottom:3px;}
 .mkt-card-sub{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
 .mkt-card-pnl{font-size:11px;font-family:var(--font-mono);margin-top:4px;}
+
+/* Dashboard hero card */
+.dash-hero{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;position:relative;overflow:hidden;margin-bottom:0;}
+.dash-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:#4acfb4;}
+.dash-hero-main{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;}
+.dash-hero-value{font-family:var(--font-display);font-size:42px;font-weight:300;letter-spacing:-0.03em;line-height:1;color:var(--text);}
+.dash-hero-pnl{font-size:14px;font-family:var(--font-mono);margin-top:6px;}
+.dash-sub-metrics{display:flex;gap:0;border-top:1px solid var(--border);padding-top:1rem;flex-wrap:wrap;}
+.dash-sub-metric{flex:1;min-width:120px;padding:0 1.25rem 0 0;}
+.dash-sub-metric:first-child{padding-left:0;}
+.dash-sub-metric+.dash-sub-metric{border-left:1px solid var(--border);padding-left:1.25rem;}
+.dash-sub-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;}
+.dash-sub-value{font-size:16px;font-weight:500;font-family:var(--font-display);letter-spacing:-0.01em;}
+.dash-sub-sub{font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-top:2px;}
+/* Market native currency cards */
+.dash-mkt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+.dash-mkt-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.1rem;position:relative;overflow:hidden;cursor:default;transition:border-color 0.15s;}
+.dash-mkt-card:hover{border-color:var(--border2);}
+.dash-mkt-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--mkt-color,var(--border2));}
+.dash-mkt-name{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;font-weight:500;margin-bottom:6px;color:var(--mkt-color,var(--text3));}
+.dash-mkt-value{font-size:22px;font-weight:500;letter-spacing:-0.02em;color:var(--text);line-height:1;margin-bottom:4px;}
+.dash-mkt-pnl{font-size:11px;font-family:var(--font-mono);margin-bottom:3px;}
+.dash-mkt-pos{font-size:10px;color:var(--text3);}
 </style>
 </head>
 <body>
@@ -227,21 +250,43 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div id="dashboard" class="section active">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:0.25rem;">
           <h1 class="page-title" style="margin:0;">Dashboard</h1>
-          <button class="btn btn-outline btn-sm" onclick="fetchAllPrices(true)">⟳ Refresh now</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono);" id="lastUpdated"></span>
+            <button class="btn btn-outline btn-sm" onclick="fetchAllPrices(true)">⟳ Refresh now</button>
+          </div>
         </div>
-        <p class="page-sub" id="lastUpdated">Your portfolio at a glance</p>
-        <div class="metric-grid" id="metricGrid"></div>
+        <p class="page-sub" style="margin-bottom:1rem;">Your portfolio at a glance</p>
+
+        <!-- Hero value + sub-metrics -->
+        <div id="dashHero" style="margin-bottom:1rem;"></div>
+
+        <!-- Native currency market cards -->
+        <div id="dashMarketCards" style="margin-bottom:1rem;"></div>
+
+        <!-- Today's movers strip -->
         <div id="dashDailyStrip"></div>
+
+        <!-- Bottom: left col (alloc + top holdings) | right col (XIRR + insights) -->
         <div class="two-col">
           <div>
-            <div class="card"><div class="card-title">Allocation by market</div><div id="allocMarket"></div></div>
-            <div class="card"><div class="card-title">Top holdings by value</div><div id="allocHoldings"></div></div>
+            <div class="card">
+              <div class="card-title">Allocation by market</div>
+              <div id="allocMarket"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Top holdings by value</div>
+              <div id="allocHoldings"></div>
+            </div>
           </div>
           <div>
-            <div class="card" style="text-align:center;padding:1.5rem;">
-              <div class="card-title">XIRR — annualised return</div>
-              <div class="xirr-big" id="xirrVal">—</div>
-              <div style="font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--font-mono);">based on all cash flows to date</div>
+            <div class="card" style="padding:1.25rem;">
+              <div class="card-title">Portfolio performance</div>
+              <div style="display:flex;flex-direction:column;gap:0;">
+                <div class="insight-row"><span class="insight-label">XIRR (annualised)</span><span class="insight-value" id="xirrVal" style="font-size:14px;">—</span></div>
+                <div class="insight-row"><span class="insight-label">Total P&L</span><span class="insight-value" id="dashTotalPnl">—</span></div>
+                <div class="insight-row"><span class="insight-label">Today's P&L</span><span class="insight-value" id="dashDailyPnl">—</span></div>
+                <div class="insight-row"><span class="insight-label">Dividends</span><span class="insight-value neu" id="dashDivTotal">—</span></div>
+              </div>
             </div>
             <div class="card"><div class="card-title">Key insights</div><div id="insightPanel"></div></div>
           </div>
@@ -1140,18 +1185,111 @@ function renderDashboard(){
   const pnl=toBase(m.totalVal-m.totalInv);
   const pnlPct=m.totalInv>0?((m.totalVal-m.totalInv)/m.totalInv)*100:0;
   const divY=m.totalInv>0?(m.totalDiv/m.totalInv)*100:0;
-  document.getElementById('lastUpdated').textContent='Last updated '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  document.getElementById('metricGrid').innerHTML=[
-    {label:'Portfolio value',value:fmtN(toBase(m.totalVal)),sub:m.hasLive?'Live prices':'At cost basis',line:'#4acfb4'},
-    {label:'Total invested',value:fmtN(toBase(m.totalInv)),sub:m.holdings.length+' positions',line:'#5a9ce8'},
-    {label:'Total P&L',value:fmtSign(pnl),sub:fmtPct(pnlPct),cls:clsPnl(pnl),line:pnl>=0?'#c8f060':'#e8604a'},
-    {label:"Today's P&L",value:m.hasLive?fmtSign(toBase(m.totalDaily)):'—',sub:m.hasLive?fmtPct(m.dailyPct):'Refresh prices',cls:clsPnl(m.totalDaily),line:m.totalDaily>=0?'#c8f060':'#e8604a'},
-    {label:'Dividends',value:fmtN(toBase(m.totalDiv)),sub:'Yield '+divY.toFixed(2)+'%',line:'#e8c96a',cls:'pos'},
-  ].map(x=>`<div class="metric" style="--accent-line:${x.line}"><div class="metric-label">${x.label}</div><div class="metric-value ${x.cls||''}">${x.value}</div><div class="metric-sub">${x.sub}</div></div>`).join('');
+  const now=new Date();
+  const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const dateStr=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('lastUpdated').textContent=dateStr+' · Updated '+timeStr;
 
-  const xirrEl=document.getElementById('xirrVal');
-  if(m.xirrVal!==null){xirrEl.textContent=(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%';xirrEl.className='xirr-big '+(m.xirrVal>=0?'pos':'neg');}
-  else{xirrEl.textContent='—';xirrEl.className='xirr-big';}
+  // ── Hero card ──
+  const heroEl=document.getElementById('dashHero');
+  if(heroEl){
+    heroEl.innerHTML=`<div class="dash-hero">
+      <div class="dash-hero-main">
+        <div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">Total portfolio value</div>
+          <div class="dash-hero-value">${fmtN(toBase(m.totalVal))}</div>
+          <div class="dash-hero-pnl">
+            <span class="${clsPnl(pnl)}">${fmtSign(pnl)} (${fmtPct(pnlPct)})</span>
+            <span style="color:var(--text3);margin:0 8px;">all time</span>
+            ${m.hasLive?`<span class="${clsPnl(m.totalDaily)}">${fmtSign(toBase(m.totalDaily))} (${fmtPct(m.dailyPct)})</span> <span style="color:var(--text3);">today</span>`:''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">XIRR</div>
+          <div style="font-family:var(--font-display);font-size:32px;font-weight:300;letter-spacing:-0.03em;" class="${m.xirrVal>=0?'pos':'neg'}" id="xirrVal">${m.xirrVal!==null?(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%':'—'}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);">annualised return</div>
+        </div>
+      </div>
+      <div class="dash-sub-metrics">
+        <div class="dash-sub-metric">
+          <div class="dash-sub-label">Invested</div>
+          <div class="dash-sub-value">${fmtN(toBase(m.totalInv))}</div>
+          <div class="dash-sub-sub">${m.holdings.length} positions</div>
+        </div>
+        <div class="dash-sub-metric">
+          <div class="dash-sub-label">Today's P&L</div>
+          <div class="dash-sub-value ${clsPnl(m.totalDaily)}">${m.hasLive?fmtSign(toBase(m.totalDaily)):'—'}</div>
+          <div class="dash-sub-sub">${m.hasLive?fmtPct(m.dailyPct):'Refresh prices'}</div>
+        </div>
+        <div class="dash-sub-metric">
+          <div class="dash-sub-label">Dividends</div>
+          <div class="dash-sub-value neu">${fmtN(toBase(m.totalDiv))}</div>
+          <div class="dash-sub-sub">${divY.toFixed(2)}% yield</div>
+        </div>
+        <div class="dash-sub-metric">
+          <div class="dash-sub-label">Markets</div>
+          <div class="dash-sub-value">${Object.keys(m.mktAlloc).length}</div>
+          <div class="dash-sub-sub">active markets</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // xirrVal now rendered inside hero card above — no separate element needed
+
+  // ── Market native currency cards ──
+  const mktCardsEl = document.getElementById('dashMarketCards');
+  if (mktCardsEl) {
+    const MKT_CFG = {
+      India:      { color:'#e8a84a', currency:'INR', sym:'₹', label:'India' },
+      US:         { color:'#5a9ce8', currency:'USD', sym:'$', label:'US' },
+      Europe:     { color:'#4acfb4', currency:'EUR', sym:'€', label:'Europe' },
+      Crypto:     { color:'#a87ee8', currency:'EUR', sym:'€', label:'Crypto' },
+      MutualFund: { color:'#e8a84a', currency:'INR', sym:'₹', label:'India' }, // groups with India
+      SGB:        { color:'#e8a84a', currency:'INR', sym:'₹', label:'India' }, // groups with India
+    };
+    const groups = {};
+    m.holdings.forEach(h => {
+      const cfg = MKT_CFG[h.market] || { color:'#888', currency:'EUR', sym:'€', label:h.market };
+      const key = cfg.label; // MutualFund and SGB map to 'India'
+      if (!groups[key]) groups[key] = { ...cfg, holdings:[] };
+      groups[key].holdings.push(h);
+    });
+    const eurToNative = {
+      INR: 1/(liveFxRates['INR']||FALLBACK_FX['INR']||0.011),
+      USD: 1/(liveFxRates['USD']||FALLBACK_FX['USD']||0.92),
+      EUR: 1,
+      GBP: 1/(liveFxRates['GBP']||FALLBACK_FX['GBP']||1.16),
+    };
+    const mktOrder = ['India','US','Europe','Crypto'];
+    const cards = mktOrder.filter(k => groups[k]).map(key => {
+      const g = groups[key];
+      const mul = eurToNative[g.currency] || 1;
+      const totalVal = g.holdings.reduce((s,h)=>s+h.currentValueEur,0);
+      const totalCost = g.holdings.reduce((s,h)=>s+h.remainCostEur,0);
+      const totalPnl = totalVal - totalCost;
+      const totalDaily = g.holdings.filter(h=>h.hasLive).reduce((s,h)=>s+h.dailyPnlEur,0);
+      const pnlPct = totalCost>0?(totalPnl/totalCost)*100:0;
+      const hasLive = g.holdings.some(h=>h.hasLive);
+      const fmtNat = (eurVal) => {
+        const v = eurVal*mul; const a=Math.abs(v);
+        if(a>=1e7) return g.sym+(v/1e7).toFixed(2)+'Cr';
+        if(a>=1e5) return g.sym+(v/1e5).toFixed(2)+'L';
+        if(a>=1000) return g.sym+Math.round(v).toLocaleString('en');
+        return g.sym+v.toFixed(0);
+      };
+      const pnlSign = totalPnl>=0?'+':'';
+      const daySign = totalDaily>=0?'+':'';
+      return `<div class="dash-mkt-card" style="--mkt-color:${g.color}">
+        <div class="dash-mkt-name">${g.label}</div>
+        <div class="dash-mkt-value">${fmtNat(totalVal)}</div>
+        <div class="dash-mkt-pnl ${clsPnl(totalPnl)}">${pnlSign}${fmtNat(totalPnl)} · ${pnlSign}${pnlPct.toFixed(2)}%</div>
+        ${hasLive?`<div class="dash-mkt-pnl ${clsPnl(totalDaily)}" style="font-size:10px;">${daySign}${fmtNat(totalDaily)} today</div>`:''}
+        <div class="dash-mkt-pos">${g.holdings.length} position${g.holdings.length!==1?'s':''}</div>
+      </div>`;
+    });
+    mktCardsEl.innerHTML = `<div class="dash-mkt-grid">${cards.join('')}</div>`;
+  }
 
   const total=Object.values(m.mktAlloc).reduce((s,v)=>s+v,0)||1;
   document.getElementById('allocMarket').innerHTML=Object.entries(m.mktAlloc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const p=(v/total*100).toFixed(1);return`<div class="alloc-row"><div class="alloc-label">${k}</div><div class="alloc-bar-bg"><div class="alloc-bar" style="width:${p}%;background:${MKT_COLORS[k]||'#888'}"></div></div><div class="alloc-pct">${p}%</div></div>`;}).join('')||'<div class="empty">No data</div>';
@@ -1167,6 +1305,13 @@ function renderDashboard(){
       <div style="flex:1;min-width:180px;"><div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">Losers</div>${losers.map(h=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="font-family:var(--font-mono);">${h.ticker}</span><span class="neg" style="font-family:var(--font-mono);">${fmtN(toBase(h.dailyPnlEur))} (${fmtPct(h.dailyPnlPct)})</span></div>`).join('')||'<div style="font-size:12px;color:var(--text3);">None</div>'}</div>
     </div></div>`;
   } else { strip.innerHTML=''; }
+
+  // Fill performance card
+  const setEl=(id,html,cls)=>{const e=document.getElementById(id);if(e){e.innerHTML=html;if(cls)e.className='insight-value '+cls;}};
+  setEl('xirrVal', m.xirrVal!==null?(m.xirrVal>=0?'+':'')+m.xirrVal.toFixed(2)+'%':'—', m.xirrVal>=0?'pos':'neg');
+  setEl('dashTotalPnl', fmtSign(pnl)+' ('+fmtPct(pnlPct)+')', clsPnl(pnl));
+  setEl('dashDailyPnl', m.hasLive?fmtSign(toBase(m.totalDaily))+' ('+fmtPct(m.dailyPct)+')':'—', m.hasLive?clsPnl(m.totalDaily):'');
+  setEl('dashDivTotal', fmtN(toBase(m.totalDiv))+' ('+divY.toFixed(2)+'% yield)', 'neu');
 
   const topDiv=[...m.holdings].filter(h=>h.dividendsEur>0).sort((a,b)=>b.divYield-a.divYield)[0];
   const topH2=[...m.holdings].sort((a,b)=>b.currentValueEur-a.currentValueEur)[0];
