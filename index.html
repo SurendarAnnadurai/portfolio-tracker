@@ -665,48 +665,8 @@ function fmtPct(v)  { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+
 function fmtSign(v) { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+fmtN(v); }
 function clsPnl(v)  { return v>=0?'pos':'neg'; }
 function save() {
-  // Step 1: Build merged array from storage + in-memory
-  let merged;
-  try {
-    const stored = JSON.parse(localStorage.getItem('folio_txns') || '[]');
-    const storedMap = new Map();
-    // Start with stored as base
-    stored.forEach(t => { if(t && t.id) storedMap.set(String(t.id), t); });
-    // In-memory additions/edits overwrite stored (in-memory is always newer)
-    transactions.forEach(t => { if(t && t.id) storedMap.set(String(t.id), t); });
-    merged = [...storedMap.values()];
-    // Safe sort — handle null/missing dates gracefully
-    merged.sort((a, b) => {
-      const da = a.date || '';
-      const db = b.date || '';
-      return da < db ? -1 : da > db ? 1 : 0;
-    });
-  } catch(e) {
-    // If merge fails, use in-memory as-is
-    merged = [...transactions];
-  }
-
-  // Step 2: Write to localStorage — retry if quota error
-  try {
-    localStorage.setItem('folio_txns', JSON.stringify(merged));
-    transactions = merged;
-  } catch(e) {
-    // Quota exceeded or other write error — show visible warning
-    console.error('Save failed:', e);
-    const msg = document.getElementById('addMsg') || document.getElementById('refreshStatus');
-    if (msg) {
-      msg.textContent = '⚠ Save failed — storage may be full';
-      msg.style.color = 'var(--red)';
-    }
-    // Try saving just the most recent 500 transactions as fallback
-    try {
-      const trimmed = merged.slice(-500);
-      localStorage.setItem('folio_txns', JSON.stringify(trimmed));
-      transactions = trimmed;
-    } catch(e2) {
-      console.error('Trimmed save also failed:', e2);
-    }
-  }
+  // Simple direct save — transactions array is always kept complete in memory
+  localStorage.setItem('folio_txns', JSON.stringify(transactions));
 }
 function savePrices() {
   localStorage.setItem('folio_prices', JSON.stringify(livePrices));
@@ -1063,17 +1023,12 @@ function computeHoldings() {
     const prevPriceEur        = hasLive ? prevPriceInOrigCcy * activeFx : avgCostEur;
     const prevValueEur        = prevPriceEur * netQty;
 
-    // Daily % — use Yahoo's own regularMarketChangePercent directly
-    // This is exactly what Yahoo Finance displays, no recalculation needed
-    const dailyChangePctFromYahoo = hasLive && lp.dailyChangePct !== undefined ? lp.dailyChangePct : null;
-    const dailyPriceChangeOrig = hasLive && lp.dailyChangeAbs !== undefined
-      ? lp.dailyChangeAbs  // Use Yahoo's absolute change directly
-      : hasLive ? currentPriceInOrigCcy - (prevPriceInOrigCcy || currentPriceInOrigCcy) : 0;
-    const dailyPnlEur = hasLive ? dailyPriceChangeOrig * liveFxForDaily * netQty : 0;
-    // Use Yahoo's % directly — fallback to calculated only if not available
-    const dailyPnlPct = dailyChangePctFromYahoo !== null
-      ? dailyChangePctFromYahoo
-      : (hasLive && prevPriceInOrigCcy > 0 ? (dailyPriceChangeOrig / prevPriceInOrigCcy) * 100 : 0);
+    // Daily % and P&L — use Yahoo's own fields directly
+    // dailyChangePct comes from regularMarketChangePercent (set by Yahoo, matches their UI)
+    // dailyChangeAbs comes from regularMarketChange (absolute price change in orig currency)
+    const dailyPnlPct = hasLive && lp.dailyChangePct != null ? lp.dailyChangePct : 0;
+    const dailyChangeAbsOrig = hasLive && lp.dailyChangeAbs != null ? lp.dailyChangeAbs : 0;
+    const dailyPnlEur = hasLive ? dailyChangeAbsOrig * liveFxForDaily * netQty : 0;
 
     // Currency depreciation/appreciation vs purchase date
     const fxChangePct = avgHistFx > 0 ? ((liveFx - avgHistFx) / avgHistFx) * 100 : 0;
@@ -1250,14 +1205,12 @@ function addTx(){
   const fx=parseFloat(document.getElementById('f_fx').value)||FALLBACK_FX[currency]||1;
   const amtOrig=type==='dividend'?price:qty*price;
   const amtEur=type==='bonus'?0:amtOrig*fx;
-  const newTx = {id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')};
-  transactions.push(newTx);
+  // Always read fresh from storage before adding — never trust stale in-memory
+  transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  transactions.push({id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')});
   save();
-  // Verify it was actually saved
-  const saved = JSON.parse(localStorage.getItem('folio_txns') || '[]');
-  const verified = saved.some(t => String(t.id) === String(newTx.id));
-  document.getElementById('addMsg').textContent = verified ? 'Added ✓' : '⚠ Save failed — try again';
-  document.getElementById('addMsg').style.color = verified ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('addMsg').textContent='Added ✓';
+  document.getElementById('addMsg').style.color='var(--accent)';
   setTimeout(()=>document.getElementById('addMsg').textContent='',2500);
   ['f_ticker','f_name','f_qty','f_price','f_notes','f_search'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
@@ -1765,20 +1718,17 @@ function confirmImport() {
   });
 
   const valid = parsedRows.filter(r => r.valid);
+  if (!valid.length) { alert('No valid rows to import.'); return; }
+  // Always read fresh from storage before adding — never trust stale in-memory
+  transactions = JSON.parse(localStorage.getItem('folio_txns') || '[]');
   valid.forEach(r => transactions.push({
     id: Date.now()+Math.random(), market:r.market, ticker:r.ticker,
     name:r.name, type:r.type, date:r.date, qty:r.qty, price:r.price,
     currency:r.currency, fx:r.fx, amtEur:r.amtEur, notes:r.notes, fxAuto:r.fxAuto
   }));
-  const countBefore = JSON.parse(localStorage.getItem('folio_txns') || '[]').length;
   save();
-  const countAfter = JSON.parse(localStorage.getItem('folio_txns') || '[]').length;
   document.getElementById('parsePreview').style.display = 'none';
-  if (countAfter > countBefore) {
-    alert(`Imported ${valid.length} transactions. Total: ${countAfter}`);
-  } else {
-    alert(`⚠ Import may have failed — storage error. Please try again or check browser storage.`);
-  }
+  alert('Imported ' + valid.length + ' transactions. Total in portfolio: ' + transactions.length);
   showTab('dashboard');
 }
 
