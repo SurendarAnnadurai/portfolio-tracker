@@ -618,11 +618,11 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 // ═══════════════════════════════════════
 let transactions = JSON.parse(localStorage.getItem('folio_txns')   || '[]');
 // Clear stale price cache if it's older than 2 hours — forces fresh prevClose fetch
-const _priceTs = parseInt(localStorage.getItem('folio_prices_ts') || '0');
-const _priceAge = Date.now() - _priceTs;
-let livePrices = _priceAge > 7200000
-  ? {}
-  : JSON.parse(localStorage.getItem('folio_prices') || '{}');
+// Always start with empty prices on page load to ensure fresh dailyChangePct from Yahoo
+// Prices will be fetched automatically on startup
+let livePrices = {};
+localStorage.removeItem('folio_prices');
+localStorage.removeItem('folio_prices_ts');
 let parsedRows   = [];
 let autoRefreshTimer = null;
 let isFetching   = false;
@@ -730,27 +730,24 @@ async function fetchYahooViaProxy(symbol) {
     if (!result) return null;
     const meta = result.meta;
 
-    // Current price — always regularMarketPrice (live or last official close)
     const price = meta.regularMarketPrice;
     if (!price) return null;
 
-    // prevClose priority: server already picked best value into chartPreviousClose
-    // but we also check regularMarketPreviousClose as additional source
-    const prev = meta.regularMarketPreviousClose ||
-                 meta.chartPreviousClose ||
-                 meta.previousClose ||
-                 price;
+    // Use Yahoo's own daily change fields directly — same as what Yahoo shows
+    // regularMarketChange and regularMarketChangePercent are set by Yahoo
+    // and match exactly what appears on finance.yahoo.com quote pages
+    const dailyChangeAbs = meta.regularMarketChange ?? 0;
+    const dailyChangePct = meta.regularMarketChangePercent ?? 0;
 
-    // Sanity check — if implied daily change >20% something is wrong
-    // (genuine 20% moves are extremely rare for indices/blue chips)
-    const changePct = prev > 0 ? Math.abs((price - prev) / prev) * 100 : 0;
-    const safePrev = changePct > 20
-      ? (meta.chartPreviousClose || meta.regularMarketPreviousClose || prev)
-      : prev;
+    // prevClose = current price minus Yahoo's own daily change
+    // This is 100% consistent with Yahoo's displayed percentage
+    const prevClose = price - dailyChangeAbs;
 
     return {
       price,
-      prevClose: safePrev,
+      prevClose,
+      dailyChangeAbs,
+      dailyChangePct, // Store Yahoo's exact % — use this directly in UI
       currency: meta.currency || 'USD',
       source: 'Yahoo Finance'
     };
@@ -813,7 +810,9 @@ async function fetchCryptoBatch(tickers) {
       const ticker = tickers.find(t=>getPriceSource(t).id===coin.id);
       if (ticker) {
         const price = coin.current_price;
-        result[ticker] = { price, prevClose:price-(coin.price_change_24h||0), currency:'EUR', source:'CoinGecko' };
+        const cDailyAbs = coin.price_change_24h || 0;
+        const cDailyPct = coin.price_change_percentage_24h || 0;
+        result[ticker] = { price, prevClose:price-cDailyAbs, dailyChangeAbs:cDailyAbs, dailyChangePct:cDailyPct, currency:'EUR', source:'CoinGecko' };
       }
     });
     return result;
@@ -1036,13 +1035,17 @@ function computeHoldings() {
     const prevPriceEur        = hasLive ? prevPriceInOrigCcy * activeFx : avgCostEur;
     const prevValueEur        = prevPriceEur * netQty;
 
-    // Daily P&L in EUR (using live FX for accuracy)
-    const dailyPriceChangeOrig = hasLive ? currentPriceInOrigCcy - (prevPriceInOrigCcy || currentPriceInOrigCcy) : 0;
-    const dailyPnlEur    = hasLive ? dailyPriceChangeOrig * liveFxForDaily * netQty : 0;
-    // Daily % is pure price movement — same as Yahoo shows (no FX distortion)
-    const dailyPnlPct    = hasLive && prevPriceInOrigCcy && prevPriceInOrigCcy > 0
-      ? (dailyPriceChangeOrig / prevPriceInOrigCcy) * 100
-      : 0;
+    // Daily % — use Yahoo's own regularMarketChangePercent directly
+    // This is exactly what Yahoo Finance displays, no recalculation needed
+    const dailyChangePctFromYahoo = hasLive && lp.dailyChangePct !== undefined ? lp.dailyChangePct : null;
+    const dailyPriceChangeOrig = hasLive && lp.dailyChangeAbs !== undefined
+      ? lp.dailyChangeAbs  // Use Yahoo's absolute change directly
+      : hasLive ? currentPriceInOrigCcy - (prevPriceInOrigCcy || currentPriceInOrigCcy) : 0;
+    const dailyPnlEur = hasLive ? dailyPriceChangeOrig * liveFxForDaily * netQty : 0;
+    // Use Yahoo's % directly — fallback to calculated only if not available
+    const dailyPnlPct = dailyChangePctFromYahoo !== null
+      ? dailyChangePctFromYahoo
+      : (hasLive && prevPriceInOrigCcy > 0 ? (dailyPriceChangeOrig / prevPriceInOrigCcy) * 100 : 0);
 
     // Currency depreciation/appreciation vs purchase date
     const fxChangePct = avgHistFx > 0 ? ((liveFx - avgHistFx) / avgHistFx) * 100 : 0;
