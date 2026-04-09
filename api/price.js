@@ -24,19 +24,55 @@ export default async function handler(req, res) {
       const result = data?.chart?.result?.[0];
       if (!result) continue;
 
-      const meta = result.meta;
+      const meta       = result.meta;
       const currentPrice = meta.regularMarketPrice;
       if (!currentPrice) continue;
 
-      // Use Yahoo's own daily change fields directly — no calculation needed
-      // regularMarketChange = absolute price change today (e.g. -5.05)
-      // regularMarketChangePercent = % change today (e.g. -2.08)
-      // These match exactly what Yahoo Finance displays on the quote page
-      const dailyChangeAbs  = meta.regularMarketChange ?? 0;
-      const dailyChangePct  = meta.regularMarketChangePercent ?? 0;
+      const marketState = meta.marketState; // REGULAR, PRE, POST, CLOSED
 
-      // prevClose derived from Yahoo's own values — 100% consistent
-      const prevClose = currentPrice - dailyChangeAbs;
+      // Yahoo's own daily change fields
+      const yahooChangeAbs = meta.regularMarketChange ?? 0;
+      const yahooChangePct = meta.regularMarketChangePercent ?? 0;
+
+      // Get clean closes array for fallback
+      const closes     = result.indicators?.quote?.[0]?.close || [];
+      const timestamps = result.timestamp || [];
+      const bars = timestamps
+        .map((ts, i) => ({ ts, close: closes[i] }))
+        .filter(b => b.close != null)
+        .sort((a, b) => a.ts - b.ts);
+
+      let dailyChangeAbs, dailyChangePct, prevClose;
+
+      // Yahoo's regularMarketChange is ONLY non-zero during REGULAR and POST market hours
+      // During PRE market and CLOSED it resets to 0 — we need the closes array instead
+      if (marketState === 'REGULAR' || marketState === 'POST') {
+        // Market open or just closed — Yahoo's own fields are reliable
+        if (Math.abs(yahooChangePct) > 0.001) {
+          dailyChangeAbs = yahooChangeAbs;
+          dailyChangePct = yahooChangePct;
+          prevClose      = currentPrice - yahooChangeAbs;
+        } else {
+          // Yahoo fields are zero — use closes array
+          prevClose      = bars.length >= 2 ? bars[bars.length - 2].close : currentPrice;
+          dailyChangeAbs = currentPrice - prevClose;
+          dailyChangePct = prevClose > 0 ? (dailyChangeAbs / prevClose) * 100 : 0;
+        }
+      } else {
+        // PRE market or CLOSED — regularMarketPrice = last official close
+        // Use last two bars: last = today's close, second-to-last = yesterday's close
+        if (bars.length >= 2) {
+          const todayClose     = bars[bars.length - 1].close;
+          const yesterdayClose = bars[bars.length - 2].close;
+          prevClose      = yesterdayClose;
+          dailyChangeAbs = todayClose - yesterdayClose;
+          dailyChangePct = yesterdayClose > 0 ? (dailyChangeAbs / yesterdayClose) * 100 : 0;
+        } else {
+          prevClose      = meta.chartPreviousClose || currentPrice;
+          dailyChangeAbs = currentPrice - prevClose;
+          dailyChangePct = prevClose > 0 ? (dailyChangeAbs / prevClose) * 100 : 0;
+        }
+      }
 
       return res.status(200).json({
         chart: {
@@ -44,12 +80,11 @@ export default async function handler(req, res) {
             ...result,
             meta: {
               ...meta,
-              regularMarketPrice: currentPrice,
-              chartPreviousClose: prevClose,
-              previousClose: prevClose,
+              regularMarketPrice:         currentPrice,
+              chartPreviousClose:         prevClose,
+              previousClose:              prevClose,
               regularMarketPreviousClose: prevClose,
-              // Pass Yahoo's own daily change through directly
-              regularMarketChange: dailyChangeAbs,
+              regularMarketChange:        dailyChangeAbs,
               regularMarketChangePercent: dailyChangePct,
             }
           }]
