@@ -665,19 +665,47 @@ function fmtPct(v)  { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+
 function fmtSign(v) { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+fmtN(v); }
 function clsPnl(v)  { return v>=0?'pos':'neg'; }
 function save() {
-  // Safe save: read current storage, merge with in-memory, write combined result
-  // This prevents any write from losing transactions added in another tab or by auto-refresh
+  // Step 1: Build merged array from storage + in-memory
+  let merged;
   try {
     const stored = JSON.parse(localStorage.getItem('folio_txns') || '[]');
-    const storedMap = new Map(stored.map(t => [String(t.id), t]));
-    // In-memory takes precedence for same IDs (edits), but keep any storage-only entries
-    transactions.forEach(t => storedMap.set(String(t.id), t));
-    const merged = [...storedMap.values()].sort((a,b) => a.date.localeCompare(b.date));
-    localStorage.setItem('folio_txns', JSON.stringify(merged));
-    transactions = merged; // Keep in-memory in sync
+    const storedMap = new Map();
+    // Start with stored as base
+    stored.forEach(t => { if(t && t.id) storedMap.set(String(t.id), t); });
+    // In-memory additions/edits overwrite stored (in-memory is always newer)
+    transactions.forEach(t => { if(t && t.id) storedMap.set(String(t.id), t); });
+    merged = [...storedMap.values()];
+    // Safe sort — handle null/missing dates gracefully
+    merged.sort((a, b) => {
+      const da = a.date || '';
+      const db = b.date || '';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
   } catch(e) {
-    // Fallback: plain save
-    localStorage.setItem('folio_txns', JSON.stringify(transactions));
+    // If merge fails, use in-memory as-is
+    merged = [...transactions];
+  }
+
+  // Step 2: Write to localStorage — retry if quota error
+  try {
+    localStorage.setItem('folio_txns', JSON.stringify(merged));
+    transactions = merged;
+  } catch(e) {
+    // Quota exceeded or other write error — show visible warning
+    console.error('Save failed:', e);
+    const msg = document.getElementById('addMsg') || document.getElementById('refreshStatus');
+    if (msg) {
+      msg.textContent = '⚠ Save failed — storage may be full';
+      msg.style.color = 'var(--red)';
+    }
+    // Try saving just the most recent 500 transactions as fallback
+    try {
+      const trimmed = merged.slice(-500);
+      localStorage.setItem('folio_txns', JSON.stringify(trimmed));
+      transactions = trimmed;
+    } catch(e2) {
+      console.error('Trimmed save also failed:', e2);
+    }
   }
 }
 function savePrices() {
@@ -1222,9 +1250,14 @@ function addTx(){
   const fx=parseFloat(document.getElementById('f_fx').value)||FALLBACK_FX[currency]||1;
   const amtOrig=type==='dividend'?price:qty*price;
   const amtEur=type==='bonus'?0:amtOrig*fx;
-  transactions.push({id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')});
+  const newTx = {id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')};
+  transactions.push(newTx);
   save();
-  document.getElementById('addMsg').textContent='Added ✓';
+  // Verify it was actually saved
+  const saved = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+  const verified = saved.some(t => String(t.id) === String(newTx.id));
+  document.getElementById('addMsg').textContent = verified ? 'Added ✓' : '⚠ Save failed — try again';
+  document.getElementById('addMsg').style.color = verified ? 'var(--accent)' : 'var(--red)';
   setTimeout(()=>document.getElementById('addMsg').textContent='',2500);
   ['f_ticker','f_name','f_qty','f_price','f_notes','f_search'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('f_date').value=new Date().toISOString().slice(0,10);
@@ -1737,9 +1770,15 @@ function confirmImport() {
     name:r.name, type:r.type, date:r.date, qty:r.qty, price:r.price,
     currency:r.currency, fx:r.fx, amtEur:r.amtEur, notes:r.notes, fxAuto:r.fxAuto
   }));
+  const countBefore = JSON.parse(localStorage.getItem('folio_txns') || '[]').length;
   save();
+  const countAfter = JSON.parse(localStorage.getItem('folio_txns') || '[]').length;
   document.getElementById('parsePreview').style.display = 'none';
-  alert(`Imported ${valid.length} transactions.`);
+  if (countAfter > countBefore) {
+    alert(`Imported ${valid.length} transactions. Total: ${countAfter}`);
+  } else {
+    alert(`⚠ Import may have failed — storage error. Please try again or check browser storage.`);
+  }
   showTab('dashboard');
 }
 
