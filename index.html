@@ -480,8 +480,10 @@ tr:hover td{background:rgba(255,255,255,0.02);}
           <div class="card-title">Data management</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-outline" onclick="loadSample()">Load sample portfolio</button>
+            <button class="btn btn-outline" style="color:var(--teal);border-color:rgba(74,207,180,0.3);" onclick="repairFxRates()">⟳ Fix historical FX rates</button>
             <button class="btn btn-outline" style="color:var(--red);border-color:rgba(232,96,74,0.3);" onclick="clearAll()">Clear all data</button>
           </div>
+          <div id="fxRepairStatus" style="font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-top:8px;"></div>
         </div>
       </div>
 
@@ -2182,6 +2184,78 @@ function saveEdit() {
 
 // Close on Escape key
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
+
+// ═══════════════════════════════════════
+// FX RATE REPAIR TOOL
+// Fixes transactions where fx=fallback (0.011/0.92 etc) by fetching real historical rates
+// ═══════════════════════════════════════
+async function repairFxRates() {
+  const status = document.getElementById('fxRepairStatus');
+  const FALLBACKS = { INR: 0.011, USD: 0.92, GBP: 1.16, EUR: 1 };
+
+  // Find transactions that have fallback FX rates (not real historical rates)
+  // A fallback rate is exactly 0.011, 0.92, or 1.16 — real rates are never exactly these
+  const needsRepair = transactions.filter(t =>
+    t.type === 'buy' &&
+    t.currency !== 'EUR' &&
+    t.fx > 0 &&
+    (
+      Math.abs(t.fx - 0.011) < 0.00001 ||   // INR fallback
+      Math.abs(t.fx - 0.92)  < 0.0001  ||   // USD fallback
+      Math.abs(t.fx - 1.16)  < 0.001         // GBP fallback
+    )
+  );
+
+  if (!needsRepair.length) {
+    status.textContent = '✓ All FX rates look correct — nothing to repair.';
+    status.style.color = 'var(--accent)';
+    return;
+  }
+
+  status.textContent = `Found ${needsRepair.length} transactions with fallback FX rates. Fetching correct rates…`;
+  status.style.color = 'var(--text3)';
+
+  let fixed = 0, failed = 0;
+
+  for (const tx of needsRepair) {
+    try {
+      const r = await fetch(`/api/fx?from=${tx.currency}&date=${tx.date}`);
+      if (!r.ok) { failed++; continue; }
+      const d = await r.json();
+      if (!d.rates?.EUR) { failed++; continue; }
+
+      const realFx   = d.rates.EUR;
+      const amtOrig  = tx.type === 'dividend' ? tx.price : tx.qty * tx.price;
+      const newAmtEur = amtOrig * realFx;
+
+      // Update the transaction in the array
+      const idx = transactions.findIndex(t => t.id === tx.id);
+      if (idx >= 0) {
+        transactions[idx].fx     = realFx;
+        transactions[idx].amtEur = newAmtEur;
+        transactions[idx].fxAuto = true;
+      }
+
+      status.textContent = `Fixed ${++fixed}/${needsRepair.length}… (${tx.ticker} ${tx.date}: ${tx.currency} ${tx.fx.toFixed(5)} → ${realFx.toFixed(5)})`;
+      // Small delay to avoid hammering the API
+      await new Promise(r => setTimeout(r, 150));
+    } catch(e) { failed++; }
+  }
+
+  // Save all fixed transactions
+  save();
+
+  status.style.color = fixed > 0 ? 'var(--accent)' : 'var(--red)';
+  status.textContent = `✓ Fixed ${fixed} transactions${failed ? ', ' + failed + ' failed' : ''}. Reloading…`;
+
+  setTimeout(() => {
+    renderDashboard();
+    renderHoldingsTable();
+    renderTxTable();
+    status.textContent = `✓ Done. Fixed ${fixed} FX rates. Check Holdings to verify.`;
+  }, 500);
+}
 
 // ═══════════════════════════════════════
 // INIT
