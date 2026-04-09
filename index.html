@@ -617,7 +617,12 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 // STATE
 // ═══════════════════════════════════════
 let transactions = JSON.parse(localStorage.getItem('folio_txns')   || '[]');
-let livePrices   = JSON.parse(localStorage.getItem('folio_prices') || '{}');
+// Clear stale price cache if it's older than 2 hours — forces fresh prevClose fetch
+const _priceTs = parseInt(localStorage.getItem('folio_prices_ts') || '0');
+const _priceAge = Date.now() - _priceTs;
+let livePrices = _priceAge > 7200000
+  ? {}
+  : JSON.parse(localStorage.getItem('folio_prices') || '{}');
 let parsedRows   = [];
 let autoRefreshTimer = null;
 let isFetching   = false;
@@ -659,8 +664,26 @@ function fmtN(v) {
 function fmtPct(v)  { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+v.toFixed(2)+'%'; }
 function fmtSign(v) { if(v===null||isNaN(v)) return '—'; return (v>=0?'+':'')+fmtN(v); }
 function clsPnl(v)  { return v>=0?'pos':'neg'; }
-function save()       { localStorage.setItem('folio_txns',   JSON.stringify(transactions)); }
-function savePrices() { localStorage.setItem('folio_prices', JSON.stringify(livePrices));   }
+function save() {
+  // Safe save: read current storage, merge with in-memory, write combined result
+  // This prevents any write from losing transactions added in another tab or by auto-refresh
+  try {
+    const stored = JSON.parse(localStorage.getItem('folio_txns') || '[]');
+    const storedMap = new Map(stored.map(t => [String(t.id), t]));
+    // In-memory takes precedence for same IDs (edits), but keep any storage-only entries
+    transactions.forEach(t => storedMap.set(String(t.id), t));
+    const merged = [...storedMap.values()].sort((a,b) => a.date.localeCompare(b.date));
+    localStorage.setItem('folio_txns', JSON.stringify(merged));
+    transactions = merged; // Keep in-memory in sync
+  } catch(e) {
+    // Fallback: plain save
+    localStorage.setItem('folio_txns', JSON.stringify(transactions));
+  }
+}
+function savePrices() {
+  localStorage.setItem('folio_prices', JSON.stringify(livePrices));
+  localStorage.setItem('folio_prices_ts', String(Date.now()));
+}
 function mktBadge(m)  { return `<span class="badge badge-${(m||'').toLowerCase().replace(/\s/g,'')}">${m}</span>`; }
 
 // ═══════════════════════════════════════
@@ -842,9 +865,9 @@ async function fetchAllPrices(manual=false) {
     mark(ticker,result);
     // Update name from AMFI if it was a scheme code — track if anything changed
     if(result?.name){
-      let nameChanged=false;
-      transactions.filter(t=>t.ticker===ticker&&(t.name===ticker||/^\d+$/.test(t.name))).forEach(t=>{t.name=result.name;nameChanged=true;});
-      if(nameChanged) save(); // Only save if names actually updated
+      // Update name in memory only — do NOT save to localStorage from within price refresh
+      // to avoid overwriting transactions saved by the user
+      transactions.filter(t=>t.ticker===ticker&&(t.name===ticker||/^\d+$/.test(t.name))).forEach(t=>{t.name=result.name;});
     }
   });
 
@@ -1196,11 +1219,6 @@ function addTx(){
   const fx=parseFloat(document.getElementById('f_fx').value)||FALLBACK_FX[currency]||1;
   const amtOrig=type==='dividend'?price:qty*price;
   const amtEur=type==='bonus'?0:amtOrig*fx;
-  // Re-read from storage to avoid overwriting data saved by other operations
-  const stored = JSON.parse(localStorage.getItem('folio_txns') || '[]');
-  const storedIds = new Set(stored.map(t=>t.id));
-  const memOnly = transactions.filter(t=>!storedIds.has(t.id));
-  transactions = [...stored, ...memOnly];
   transactions.push({id:Date.now()+Math.random(),market:document.getElementById('f_market').value,ticker,name:document.getElementById('f_name').value.trim()||ticker,type,date,qty,price,currency,fx,amtEur,notes:document.getElementById('f_notes').value.trim(),fxAuto:document.getElementById('fxSourceBadge').classList.contains('fx-auto')});
   save();
   document.getElementById('addMsg').textContent='Added ✓';
@@ -1709,15 +1727,6 @@ function confirmImport() {
       parsedRows[idx].resolveStatus = 'manual';
     }
   });
-
-  // CRITICAL: Re-read transactions fresh from localStorage before adding
-  // This prevents a race condition where auto-refresh may have saved
-  // an older version of transactions during import
-  const freshFromStorage = JSON.parse(localStorage.getItem('folio_txns') || '[]');
-  // Merge: use storage as base, but keep any in-memory additions not yet in storage
-  const inStorageIds = new Set(freshFromStorage.map(t => t.id));
-  const inMemoryOnly = transactions.filter(t => !inStorageIds.has(t.id));
-  transactions = [...freshFromStorage, ...inMemoryOnly];
 
   const valid = parsedRows.filter(r => r.valid);
   valid.forEach(r => transactions.push({
