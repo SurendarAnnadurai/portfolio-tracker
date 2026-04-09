@@ -757,7 +757,11 @@ async function fetchGold() {
         if (priceUSD) {
           const usdToInr = 1/(FALLBACK_FX['INR']||0.011);
           const g = 1/31.1035;
-          return { price:priceUSD*g*usdToInr, prevClose:prevUSD*g*usdToInr, currency:'INR', source:'Gold (XAU/USD)' };
+          const gPrice = priceUSD*g*usdToInr;
+          const gPrev  = prevUSD*g*usdToInr;
+          const gDailyAbs = gPrice - gPrev;
+          const gDailyPct = gPrev > 0 ? (gDailyAbs/gPrev)*100 : 0;
+          return { price:gPrice, prevClose:gPrev, dailyChangeAbs:gDailyAbs, dailyChangePct:gDailyPct, currency:'INR', source:'Gold (XAU/USD)' };
         }
       }
     }
@@ -780,7 +784,11 @@ async function fetchAMFI(code) {
     if (!r.ok) return null;
     const d = await r.json();
     if (d.status==='SUCCESS' && d.data?.length) {
-      return { price:parseFloat(d.data[0].nav), prevClose:d.data[1]?parseFloat(d.data[1].nav):parseFloat(d.data[0].nav), currency:'INR', source:'AMFI', name:d.meta?.scheme_name||null };
+      const navToday = parseFloat(d.data[0].nav);
+      const navPrev  = d.data[1] ? parseFloat(d.data[1].nav) : navToday;
+      const amfiDailyAbs = navToday - navPrev;
+      const amfiDailyPct = navPrev > 0 ? (amfiDailyAbs / navPrev) * 100 : 0;
+      return { price:navToday, prevClose:navPrev, dailyChangeAbs:amfiDailyAbs, dailyChangePct:amfiDailyPct, currency:'INR', source:'AMFI', name:d.meta?.scheme_name||null };
     }
   } catch(e) {}
   return null;
@@ -1185,9 +1193,11 @@ async function fetchHistoricalFX(currency,date){
   const key=currency+'_'+date;
   if(fxCache[key]) return fxCache[key];
   try{
-    const r=await fetch(`https://api.frankfurter.app/${date}?from=${currency}&to=EUR`);
-    const d=await r.json();
-    if(d.rates?.EUR){fxCache[key]=d.rates.EUR;return d.rates.EUR;}
+    const r=await fetch(`/api/fx?from=${currency}&date=${date}`);
+    if(r.ok){
+      const d=await r.json();
+      if(d.rates?.EUR){fxCache[key]=d.rates.EUR;return d.rates.EUR;}
+    }
   }catch(e){}
   return FALLBACK_FX[currency]||1;
 }
@@ -1803,11 +1813,12 @@ let fxMode = 'live'; // 'live' = today's rate, 'historical' = purchase-date rate
 let liveFxRates = {}; // { 'USD': 0.918, 'INR': 0.01089, 'GBP': 1.163 } — fetched fresh
 
 async function fetchLiveFxRates() {
-  // Fetch current rates for all currencies we use
+  // Route through /api/fx to avoid CORS block on frankfurter.app
   const currencies = ['USD','INR','GBP'];
   await Promise.allSettled(currencies.map(async cur => {
     try {
-      const r = await fetch(`https://api.frankfurter.app/latest?from=${cur}&to=EUR`);
+      const r = await fetch(`/api/fx?from=${cur}`);
+      if (!r.ok) return;
       const d = await r.json();
       if (d.rates?.EUR) liveFxRates[cur] = d.rates.EUR;
     } catch(e) {}
